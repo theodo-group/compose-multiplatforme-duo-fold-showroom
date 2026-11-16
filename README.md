@@ -119,6 +119,6 @@ Testé sur le simulateur **iPhone Duo** (iOS 27.2) et sur l'émulateur **Pixel 9
 
 ## Références
 
-- [Crease](https://github.com/jantursky/crease) (MIT) : bibliothèque KMP qui expose la charnière en code commun. Le pont Objective-C de ce projet reprend son approche ; elle est une alternative prête à l'emploi à `fold/`.
+- [Crease](https://github.com/jantursky/crease) (MIT) : bibliothèque KMP qui expose la charnière en code commun. Le pont Objective-C de ce projet en est adapté (notice dans [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)) ; elle est une alternative prête à l'emploi à `fold/`.
 - [android/compose-samples](https://github.com/android/compose-samples) (Jetcaster, JetNews) et [android/platform-samples](https://github.com/android/platform-samples) (WindowManager) pour les équivalents Android seuls.
 - Apple : « Preparing your app for iPhone Duo » et Tech Talks 111461, 111463, 111464.
