@@ -1,0 +1,200 @@
+package dev.showroom.fold.demos.hinge
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
+import dev.showroom.fold.fold.FoldState
+import dev.showroom.fold.fold.HingeOrientation
+import dev.showroom.fold.fold.Posture
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
+
+/**
+ * The hinge expressed in a layout's own coordinates.
+ *
+ * @param bounds the part of the hinge inside the layout, in local pixels (can have zero thickness).
+ * @param crossesFully whether the hinge spans the whole layout across its axis. A hinge that only
+ *   cuts part of the layout (e.g. the layout is offset or the window is not full screen) cannot be
+ *   used to split it cleanly.
+ */
+@Immutable
+data class LocalHinge(
+    val bounds: Rect,
+    val orientation: HingeOrientation,
+    val crossesFully: Boolean,
+)
+
+/** Tolerance, in pixels, for rounding differences between the platform and Compose. */
+private const val EDGE_TOLERANCE_PX = 2f
+
+/**
+ * Converts [FoldState.hingeBounds] (window pixels) into the coordinates of a layout whose bounds in
+ * the window are [layoutInWindow]. Returns null when the hinge does not touch the layout.
+ */
+fun FoldState.hingeIn(layoutInWindow: Rect): LocalHinge? {
+    val hinge = hingeBounds ?: return null
+    val vertical = when (orientation) {
+        HingeOrientation.Vertical -> true
+        HingeOrientation.Horizontal -> false
+        null -> hinge.height >= hinge.width
+    }
+    val l = layoutInWindow
+    if (vertical) {
+        if (hinge.right < l.left || hinge.left > l.right) return null
+        val top = max(hinge.top, l.top)
+        val bottom = min(hinge.bottom, l.bottom)
+        if (bottom <= top) return null
+        return LocalHinge(
+            bounds = Rect(max(hinge.left, l.left) - l.left, top - l.top, min(hinge.right, l.right) - l.left, bottom - l.top),
+            orientation = HingeOrientation.Vertical,
+            crossesFully = hinge.top <= l.top + EDGE_TOLERANCE_PX && hinge.bottom >= l.bottom - EDGE_TOLERANCE_PX,
+        )
+    } else {
+        if (hinge.bottom < l.top || hinge.top > l.bottom) return null
+        val left = max(hinge.left, l.left)
+        val right = min(hinge.right, l.right)
+        if (right <= left) return null
+        return LocalHinge(
+            bounds = Rect(left - l.left, max(hinge.top, l.top) - l.top, right - l.left, min(hinge.bottom, l.bottom) - l.top),
+            orientation = HingeOrientation.Horizontal,
+            crossesFully = hinge.left <= l.left + EDGE_TOLERANCE_PX && hinge.right >= l.right - EDGE_TOLERANCE_PX,
+        )
+    }
+}
+
+/** Reports the bounds of the modified layout in window pixels: the reference frame of hinge bounds. */
+fun Modifier.onWindowBounds(onBounds: (Rect) -> Unit): Modifier = onGloballyPositioned { coordinates ->
+    onBounds(Rect(coordinates.positionInWindow(), coordinates.size.toSize()))
+}
+
+/** Remembers the window bounds of a layout; attach the returned modifier to it. */
+class WindowBoundsTracker {
+    var bounds by mutableStateOf<Rect?>(null)
+        private set
+    val modifier: Modifier = Modifier.onWindowBounds { bounds = it }
+}
+
+@Composable
+fun rememberWindowBoundsTracker(): WindowBoundsTracker = remember { WindowBoundsTracker() }
+
+/** "Posture livre · charnière verticale": what the fold is doing, in one line. */
+fun FoldState.postureSummary(): String = when (posture) {
+    Posture.None -> if (hasHinge) "Charnière présente, hors de la fenêtre" else "Aucune charnière"
+    Posture.Closed -> "Appareil fermé"
+    Posture.Book -> "Posture livre · charnière verticale"
+    Posture.Tabletop -> "Posture chevalet · charnière horizontale"
+    Posture.Flat -> if (isSeparating) "À plat · pli séparant" else "À plat · pli non séparant"
+}
+
+fun HingeOrientation?.label(): String = when (this) {
+    HingeOrientation.Vertical -> "verticale"
+    HingeOrientation.Horizontal -> "horizontale"
+    null -> "inconnue"
+}
+
+/** French decimal formatting without platform APIs: 12.345f.fmt(1) = "12,3". */
+fun Float.fmt(decimals: Int = 1): String {
+    if (decimals <= 0) return roundToInt().toString()
+    var factor = 1L
+    repeat(decimals) { factor *= 10 }
+    val scaled = (abs(this) * factor).roundToLong()
+    val sign = if (this < 0 && scaled != 0L) "-" else ""
+    val whole = scaled / factor
+    val fraction = (scaled % factor).toString().padStart(decimals, '0')
+    return "$sign$whole,$fraction"
+}
+
+/**
+ * The line every demo shows on top: which layout is active and why.
+ */
+@Composable
+fun LayoutStatusBar(title: String, detail: String, modifier: Modifier = Modifier) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Text(detail, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+            }
+        }
+    }
+}
+
+/** How to reach a posture with real hardware or the OS tools: the app never fakes it. */
+internal const val HOW_TO_GET_A_FOLD =
+    "iPhone Duo : pliez ou tournez l'appareil ; dans le simulateur iOS, utilisez les commandes de pliage et de rotation du Simulator. " +
+        "Android : sur l'émulateur pliable, utilisez les commandes de pliage ou le capteur d'angle de charnière des contrôles étendus."
+
+/** Where the only on-screen fold tweaks live. */
+internal const val GAUGE_TWEAKS_POINTER =
+    "Pour tester une charnière occultante ou un autre angle dans la plage permise, ouvrez la démo « Jauge de charnière »."
+
+/**
+ * Says plainly that the device does not give the fold a demo is about, and how to get it with the
+ * real device or the OS tools. The demo keeps its fallback layout below.
+ */
+@Composable
+fun FoldHelpCard(
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedCard(modifier = modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                Spacer(Modifier.width(8.dp))
+                Text(title, style = MaterialTheme.typography.titleSmall)
+            }
+            Text(message, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = HOW_TO_GET_A_FOLD,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = GAUGE_TWEAKS_POINTER,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}

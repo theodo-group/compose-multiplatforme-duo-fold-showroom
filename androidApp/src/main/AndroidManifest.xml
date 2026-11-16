@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:label="Fold Showroom"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <!--
+            configChanges: the activity is NOT recreated when the device folds/unfolds or rotates.
+            Compose simply recomposes with the new window size, exactly like on iOS.
+            Remove this attribute to observe the "activity recreation" behaviour (see the Continuity demo).
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|keyboard|keyboardHidden|uiMode"
+            android:exported="true"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="adjustResize">
+            <!--
+                Multi-window demo: tells System UI (API 35+) that this activity supports several instances,
+                so the launcher / taskbar can offer "New window". The demo itself only needs
+                FLAG_ACTIVITY_MULTIPLE_TASK with the default "standard" launchMode.
+            -->
+            <property
+                android:name="android.window.PROPERTY_SUPPORTS_MULTI_INSTANCE_SYSTEM_UI"
+                android:value="true" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

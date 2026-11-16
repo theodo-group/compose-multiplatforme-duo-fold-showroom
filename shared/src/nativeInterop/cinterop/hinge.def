@@ -1,0 +1,9 @@
+language = Objective-C
+package = dev.showroom.fold.cinterop
+compilerOpts = -fobjc-arc
+headers = SHHingeObserverView.h
+headerFilter = SHHingeObserverView.h
+---
+// The implementation lives in its own file because the cinterop indexer rejects an @implementation
+// in the definition file itself. Including it here compiles it into the interop library.
+#include "SHHingeObserverView.m"
