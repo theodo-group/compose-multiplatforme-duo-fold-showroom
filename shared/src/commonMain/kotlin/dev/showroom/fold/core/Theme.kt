@@ -1,8 +1,6 @@
 package dev.showroom.fold.core
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -11,10 +9,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 private val LightColors = lightColorScheme(
@@ -59,7 +55,7 @@ fun ShowroomTheme(content: @Composable () -> Unit) {
 
 /** Badge colours for each [Sharing] level: (container, content). */
 @Composable
-fun Sharing.colors(): Pair<Color, Color> {
+private fun Sharing.colors(): Pair<Color, Color> {
     val dark = isSystemInDarkTheme()
     return when (this) {
         Sharing.Common -> if (dark) Color(0xFF1E4D2B) to Color(0xFFB7F0C2) else Color(0xFFCDF2D3) to Color(0xFF0C3B18)
@@ -77,19 +73,6 @@ fun SharingBadge(sharing: Sharing, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-        )
-    }
-}
-
-/** Temporary content for a demo that is not implemented yet. */
-@Composable
-fun DemoPlaceholder(text: String = "Démo en cours de construction") {
-    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
         )
     }
 }

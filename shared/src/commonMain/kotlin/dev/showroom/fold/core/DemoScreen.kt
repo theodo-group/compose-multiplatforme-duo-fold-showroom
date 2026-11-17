@@ -25,11 +25,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 
 /**
  * Host of every demo: back, title, sharing badge and info sheet, in a top bar or a vertical bar
@@ -37,7 +38,7 @@ import androidx.compose.ui.unit.dp
  * bar with [HostBarItems]. The demo content fills the rest; insets are consumed here. The fold is
  * always the real one (see LocalFoldState).
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DemoScreen(demo: Demo, onBack: () -> Unit) {
     var showInfo by rememberSaveable { mutableStateOf(false) }
@@ -45,7 +46,7 @@ fun DemoScreen(demo: Demo, onBack: () -> Unit) {
     val barItems = remember(demo.id) { BarItemsRegistry() }
 
     // Shared back handling: Android system back / predictive back, iOS edge swipe.
-    BackHandler(enabled = true, onBack = onBack)
+    NavigationBackHandler(state = rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = onBack)
     // The on-screen Back goes through the same dispatcher, so a demo's own BackHandler wins first.
     val back = rememberSystemBack(fallback = onBack)
 

@@ -9,7 +9,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.fold.FoldSource
 import dev.showroom.fold.fold.FoldState
-import dev.showroom.fold.fold.HingeOrientation
 import dev.showroom.fold.fold.Posture
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -85,13 +84,13 @@ fun FoldState.angleBlocker(): String? = when {
 fun FoldState.withTweaks(tweaks: HingeTweaks, occludingThicknessPx: Float): FoldState {
     var result = this
     val angle = tweaks.angleDegrees
-    val range = allowedAngleRange()
-    if (angle != null && angleBlocker() == null && range != null) {
+    val range = allowedAngleRange() // Null exactly when angleBlocker() is not.
+    if (angle != null && range != null) {
         result = result.copy(hingeAngleDegrees = angle.coerceIn(range))
     }
     val hinge = hingeBounds
     if (tweaks.occluding && occlusionBlocker() == null && hinge != null) {
-        val vertical = orientation?.let { it == HingeOrientation.Vertical } ?: (hinge.height >= hinge.width)
+        val vertical = isHingeVertical(hinge)
         // Never thinner than the real hinge.
         val half = max(occludingThicknessPx, if (vertical) hinge.width else hinge.height) / 2f
         val band = if (vertical) {

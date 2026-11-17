@@ -3,14 +3,13 @@ package dev.showroom.fold.demos.layout
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -66,7 +65,6 @@ private fun elapsedLabel(): String {
 
 private val JournalSaver = listSaver<List<String>, String>(save = { it }, restore = { it })
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Continuity() {
     var plainCount by remember { mutableIntStateOf(0) }
@@ -78,7 +76,8 @@ private fun Continuity() {
 
     val density = LocalDensity.current
     val windowInfo = LocalWindowInfo.current
-    LaunchedEffect(Unit) {
+    // Keyed on density too: moving between a foldable's two screens can change it.
+    LaunchedEffect(windowInfo, density) {
         snapshotFlow { windowInfo.containerSize }.collect { px ->
             val w = with(density) { px.width.toDp() }.value.toInt()
             val h = with(density) { px.height.toDp() }.value.toInt()
@@ -101,7 +100,7 @@ private fun Continuity() {
                 modifier = Modifier.fillMaxWidth().padding(12.dp),
             ) {
                 Text(
-                    (if (twoPanes) "Largeur ${totalWidth.value.toInt()} dp → deux colonnes. " else "Largeur ${totalWidth.value.toInt()} dp → une colonne. ") +
+                    "Largeur ${totalWidth.value.toInt()} dp → ${if (twoPanes) "deux colonnes" else "une colonne"}. " +
                         "Le manifeste Android déclare configChanges : pivoter ou plier ne recrée pas l'activité, " +
                         "donc même remember survit, comme sur iOS où rien n'est jamais recréé. " +
                         "Le comportement par défaut d'Android est l'inverse : voir « Recréation d'activité ».",
@@ -196,7 +195,7 @@ private fun Journal(entries: List<String>) {
 }
 
 @Composable
-private fun ScrollList(state: androidx.compose.foundation.lazy.LazyListState, modifier: Modifier) {
+private fun ScrollList(state: LazyListState, modifier: Modifier) {
     Card(modifier) {
         Column(Modifier.fillMaxSize()) {
             Text(
@@ -205,8 +204,8 @@ private fun ScrollList(state: androidx.compose.foundation.lazy.LazyListState, mo
                 modifier = Modifier.padding(12.dp),
             )
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = state) {
-                itemsIndexed(List(200) { it }, key = { _, v -> v }) { _, v ->
-                    Text("Élément ${v + 1}", modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp))
+                items(200, key = { it }) { i ->
+                    Text("Élément ${i + 1}", modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp))
                 }
             }
         }

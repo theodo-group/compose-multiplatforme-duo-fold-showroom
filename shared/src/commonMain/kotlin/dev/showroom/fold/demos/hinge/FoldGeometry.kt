@@ -57,51 +57,40 @@ data class LocalHinge(
 /** Tolerance, in pixels, for rounding differences between the platform and Compose. */
 private const val EDGE_TOLERANCE_PX = 2f
 
+/** The platform's orientation when it gives one, else the hinge's longer side. */
+internal fun FoldState.isHingeVertical(hinge: Rect): Boolean =
+    orientation?.let { it == HingeOrientation.Vertical } ?: (hinge.height >= hinge.width)
+
 /**
  * Converts [FoldState.hingeBounds] (window pixels) into the coordinates of a layout whose bounds in
  * the window are [layoutInWindow]. Returns null when the hinge does not touch the layout.
  */
 fun FoldState.hingeIn(layoutInWindow: Rect): LocalHinge? {
     val hinge = hingeBounds ?: return null
-    val vertical = when (orientation) {
-        HingeOrientation.Vertical -> true
-        HingeOrientation.Horizontal -> false
-        null -> hinge.height >= hinge.width
-    }
+    val vertical = isHingeVertical(hinge)
     val l = layoutInWindow
-    if (vertical) {
-        if (hinge.right < l.left || hinge.left > l.right) return null
-        val top = max(hinge.top, l.top)
-        val bottom = min(hinge.bottom, l.bottom)
-        if (bottom <= top) return null
-        return LocalHinge(
-            bounds = Rect(max(hinge.left, l.left) - l.left, top - l.top, min(hinge.right, l.right) - l.left, bottom - l.top),
-            orientation = HingeOrientation.Vertical,
-            crossesFully = hinge.top <= l.top + EDGE_TOLERANCE_PX && hinge.bottom >= l.bottom - EDGE_TOLERANCE_PX,
-        )
+    val clipped = Rect(max(hinge.left, l.left), max(hinge.top, l.top), min(hinge.right, l.right), min(hinge.bottom, l.bottom))
+    // A seamless hinge has zero thickness across its axis, but it must have some length along it.
+    val across = if (vertical) clipped.width else clipped.height
+    val along = if (vertical) clipped.height else clipped.width
+    if (across < 0f || along <= 0f) return null
+    val crossesFully = if (vertical) {
+        hinge.top <= l.top + EDGE_TOLERANCE_PX && hinge.bottom >= l.bottom - EDGE_TOLERANCE_PX
     } else {
-        if (hinge.bottom < l.top || hinge.top > l.bottom) return null
-        val left = max(hinge.left, l.left)
-        val right = min(hinge.right, l.right)
-        if (right <= left) return null
-        return LocalHinge(
-            bounds = Rect(left - l.left, max(hinge.top, l.top) - l.top, right - l.left, min(hinge.bottom, l.bottom) - l.top),
-            orientation = HingeOrientation.Horizontal,
-            crossesFully = hinge.left <= l.left + EDGE_TOLERANCE_PX && hinge.right >= l.right - EDGE_TOLERANCE_PX,
-        )
+        hinge.left <= l.left + EDGE_TOLERANCE_PX && hinge.right >= l.right - EDGE_TOLERANCE_PX
     }
+    return LocalHinge(
+        bounds = clipped.translate(-l.left, -l.top),
+        orientation = if (vertical) HingeOrientation.Vertical else HingeOrientation.Horizontal,
+        crossesFully = crossesFully,
+    )
 }
 
-/** Reports the bounds of the modified layout in window pixels: the reference frame of hinge bounds. */
-fun Modifier.onWindowBounds(onBounds: (Rect) -> Unit): Modifier = onGloballyPositioned { coordinates ->
-    onBounds(Rect(coordinates.positionInWindow(), coordinates.size.toSize()))
-}
-
-/** Remembers the window bounds of a layout; attach the returned modifier to it. */
+/** Remembers the bounds of a layout in window pixels, the reference frame of hinge bounds; attach [modifier] to it. */
 class WindowBoundsTracker {
     var bounds by mutableStateOf<Rect?>(null)
         private set
-    val modifier: Modifier = Modifier.onWindowBounds { bounds = it }
+    val modifier: Modifier = Modifier.onGloballyPositioned { bounds = Rect(it.positionInWindow(), it.size.toSize()) }
 }
 
 @Composable
@@ -134,9 +123,7 @@ fun Float.fmt(decimals: Int = 1): String {
     return "$sign$whole,$fraction"
 }
 
-/**
- * The line every demo shows on top: which layout is active and why.
- */
+/** The line every demo shows on top: which layout is active and why. */
 @Composable
 fun LayoutStatusBar(title: String, detail: String, modifier: Modifier = Modifier) {
     Surface(
@@ -158,13 +145,17 @@ fun LayoutStatusBar(title: String, detail: String, modifier: Modifier = Modifier
     }
 }
 
+/** " (zone de 28 dp laissée vide)" when the panes leave a gap for an occluding hinge. */
+fun gapText(a: TwoPaneArrangement): String =
+    if (a.hingeThicknessDp > 0) " (zone de ${a.hingeThicknessDp} dp laissée vide)" else ""
+
 /** How to reach a posture with real hardware or the OS tools: the app never fakes it. */
 internal const val HOW_TO_GET_A_FOLD =
     "iPhone Duo : pliez ou tournez l'appareil ; dans le simulateur iOS, utilisez les commandes de pliage et de rotation du Simulator. " +
         "Android : sur l'émulateur pliable, utilisez les commandes de pliage ou le capteur d'angle de charnière des contrôles étendus."
 
 /** Where the only on-screen fold tweaks live. */
-internal const val GAUGE_TWEAKS_POINTER =
+private const val GAUGE_TWEAKS_POINTER =
     "Pour tester une charnière occultante ou un autre angle dans la plage permise, ouvrez la démo « Jauge de charnière »."
 
 /**

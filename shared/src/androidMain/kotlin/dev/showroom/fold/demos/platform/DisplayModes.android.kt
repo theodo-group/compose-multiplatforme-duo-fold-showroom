@@ -2,9 +2,8 @@ package dev.showroom.fold.demos.platform
 
 import android.app.Activity
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -15,8 +14,8 @@ import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -30,14 +29,13 @@ import androidx.window.area.WindowAreaSessionCallback
 import androidx.window.area.WindowAreaSessionPresenter
 import androidx.window.core.ExperimentalWindowApi
 import dev.showroom.fold.core.ShowroomTheme
-import java.util.concurrent.Executor
 
 private const val REAR_DISPLAY = "rear-display"
 private const val REAR_PRESENTATION = "rear-presentation"
 
 @Composable
 internal actual fun rememberDisplayModesController(): CapabilityController {
-    val activity = LocalContext.current.findHostActivity()
+    val activity = LocalActivity.current
     val controller = remember(activity) { AndroidDisplayModesController(activity) }
     if (activity != null) {
         LaunchedEffect(controller) { controller.observe() }
@@ -46,16 +44,15 @@ internal actual fun rememberDisplayModesController(): CapabilityController {
         // The presentation lives in another window bound to this screen: end it with the demo.
         // Rear-display mode is left alone (the activity may be recreated while it moves display);
         // it is closed by the user or by the system when the device is unfolded.
-        onDispose { controller.closePresentation() }
+        onDispose { controller.dispose() }
     }
     return controller
 }
 
 @OptIn(ExperimentalWindowApi::class)
 private class AndroidDisplayModesController(private val activity: Activity?) : CapabilityController {
-    private val mainExecutor = Executor { Handler(Looper.getMainLooper()).post(it) }
-    private val windowAreaController: WindowAreaController? =
-        runCatching { WindowAreaController.getOrCreate() }.getOrNull()
+    // Never throws: returns an empty controller when the device has no WindowManager extensions.
+    private val windowAreaController = WindowAreaController.getOrCreate()
 
     // WindowAreaInfo is mutable and may be re-emitted as the same instance: always notify.
     private var areas by mutableStateOf<List<WindowAreaInfo>?>(null, neverEqualPolicy())
@@ -64,11 +61,11 @@ private class AndroidDisplayModesController(private val activity: Activity?) : C
     private var presentationVisible by mutableStateOf<Boolean?>(null)
     private val log = mutableStateListOf<String>()
     private val extensionVersion: Int = runCatching { WindowSdkExtensions.getInstance().extensionVersion }.getOrDefault(0)
+    private var disposed = false
 
     suspend fun observe() {
-        val controller = windowAreaController ?: return
-        controller.windowAreaInfos.collect { infos ->
-            if (areas == null || areas?.size != infos.size) {
+        windowAreaController.windowAreaInfos.collect { infos ->
+            if (areas?.size != infos.size) {
                 log.add(0, "windowAreaInfos : ${infos.size} zone(s)")
             }
             areas = infos
@@ -163,7 +160,6 @@ private class AndroidDisplayModesController(private val activity: Activity?) : C
 
     override val notice: String?
         get() = when {
-            windowAreaController == null -> "WindowAreaController indisponible sur cet appareil."
             areas?.isEmpty() == true ->
                 "Cet appareil ne déclare aucun écran externe utilisable : c'est le résultat normal sur émulateur ou " +
                     "téléphone classique. Sur Pixel Fold / Pixel 9 Pro Fold (Android 14+), les deux modes apparaissent ici."
@@ -172,10 +168,10 @@ private class AndroidDisplayModesController(private val activity: Activity?) : C
 
     override fun start(id: String) {
         val host = activity ?: return
-        val controller = windowAreaController ?: return
         val token = rearArea?.token ?: return
+        val mainExecutor = ContextCompat.getMainExecutor(host)
         when (id) {
-            REAR_DISPLAY -> controller.transferActivityToWindowArea(
+            REAR_DISPLAY -> windowAreaController.transferActivityToWindowArea(
                 token, host, mainExecutor,
                 object : WindowAreaSessionCallback {
                     override fun onSessionStarted(session: WindowAreaSession) {
@@ -190,10 +186,12 @@ private class AndroidDisplayModesController(private val activity: Activity?) : C
                 },
             )
 
-            REAR_PRESENTATION -> controller.presentContentOnWindowArea(
+            REAR_PRESENTATION -> windowAreaController.presentContentOnWindowArea(
                 token, host, mainExecutor,
                 object : WindowAreaPresentationSessionCallback {
                     override fun onSessionStarted(session: WindowAreaSessionPresenter) {
+                        // The demo was left before the system answered: don't leave an orphan presentation.
+                        if (disposed) return session.close()
                         presenter = session
                         session.setContentView(outerComposeView(host, session))
                         log.add(0, "Présentation démarrée sur l'écran externe")
@@ -225,7 +223,12 @@ private class AndroidDisplayModesController(private val activity: Activity?) : C
         }
     }
 
-    fun closePresentation() {
+    fun dispose() {
+        disposed = true
+        closePresentation()
+    }
+
+    private fun closePresentation() {
         close(presenter ?: activeSession(WindowAreaCapability.Operation.OPERATION_PRESENT_ON_AREA))
         presenter = null
     }

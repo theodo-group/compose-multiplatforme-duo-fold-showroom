@@ -24,17 +24,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.BarItem
 import dev.showroom.fold.core.Demo
@@ -151,9 +155,9 @@ private fun readerLayoutText(a: TwoPaneArrangement, posture: Posture): String = 
     TwoPaneMode.FoldTopBottom ->
         "Charnière horizontale séparante → page du haut et page du bas, de part et d'autre du pli" + gapText(a)
     TwoPaneMode.Balanced ->
-        "${a.reason.label.replaceFirstChar { it.uppercase() }} · ${a.widthDp} dp ≥ 600 dp → 2 pages équilibrées"
+        "${a.reason.label} · ${a.widthDp} dp ≥ 600 dp → 2 pages équilibrées"
     TwoPaneMode.Single -> {
-        val why = if (posture == Posture.Closed) "Écran fermé" else a.reason.label.replaceFirstChar { it.uppercase() }
+        val why = if (posture == Posture.Closed) "Écran fermé" else a.reason.label
         "$why · ${a.widthDp} dp < 600 dp → 1 page"
     }
 }
@@ -176,11 +180,13 @@ private val PARAGRAPHS = listOf(
 
 @Composable
 private fun BookPage(index: Int, side: PageSide, arrangement: TwoPaneArrangement, onTap: (forward: Boolean) -> Unit) {
-    val dark = MaterialTheme.colorScheme.surface.luminanceApprox() < 0.5f
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val paper = if (dark) Color(0xFF2A2620) else Color(0xFFFFF8EC)
     val ink = if (dark) Color(0xFFEDE3D2) else Color(0xFF2B2418)
     val gutter = Color.Black.copy(alpha = if (dark) 0.45f else 0.16f)
 
+    // The tap detector outlives recompositions; without this it would keep the page of its first frame.
+    val currentOnTap by rememberUpdatedState(onTap)
     Surface(
         color = paper,
         contentColor = ink,
@@ -189,9 +195,9 @@ private fun BookPage(index: Int, side: PageSide, arrangement: TwoPaneArrangement
             .foldGutter(side, arrangement, gutter)
             .pointerInput(side) {
                 detectTapGestures { position ->
-                    // Facing pages: left page goes back, right page forward.
+                    // Facing pages: first page goes back, second page forward.
                     // Single page: the first third goes back, the rest goes forward.
-                    onTap(
+                    currentOnTap(
                         when (side) {
                             PageSide.First -> false
                             PageSide.Second -> true
@@ -231,9 +237,6 @@ private fun BookPage(index: Int, side: PageSide, arrangement: TwoPaneArrangement
     }
 }
 
-/** Rough luminance, enough to pick paper colours in light and dark themes. */
-private fun Color.luminanceApprox(): Float = 0.2126f * red + 0.7152f * green + 0.0722f * blue
-
 /**
  * Subtle fold indicator: a soft shadow on the edge of each page that touches the hinge (the
  * "gutter" of a real book). A thin rule for a balanced split, nothing for a single page.
@@ -247,7 +250,7 @@ private fun Modifier.foldGutter(side: PageSide, arrangement: TwoPaneArrangement,
         when (arrangement.mode) {
             TwoPaneMode.FoldStartEnd -> {
                 // Physical side of the hinge: first pane is on the left in LTR.
-                val hingeOnRight = (side == PageSide.First) == (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr)
+                val hingeOnRight = (side == PageSide.First) == (layoutDirection == LayoutDirection.Ltr)
                 if (hingeOnRight) {
                     drawRect(Brush.horizontalGradient(listOf(clear, shadow), startX = size.width - depth, endX = size.width))
                 } else {
@@ -262,8 +265,8 @@ private fun Modifier.foldGutter(side: PageSide, arrangement: TwoPaneArrangement,
                 }
             }
             TwoPaneMode.Balanced -> {
-                val x = if ((side == PageSide.First) == (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr)) size.width else 0f
-                drawLine(shadow, androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Offset(x, size.height), strokeWidth = 1.dp.toPx())
+                val x = if ((side == PageSide.First) == (layoutDirection == LayoutDirection.Ltr)) size.width else 0f
+                drawLine(shadow, Offset(x, 0f), Offset(x, size.height), strokeWidth = 1.dp.toPx())
             }
             TwoPaneMode.Single -> Unit
         }

@@ -27,7 +27,7 @@ import dev.showroom.fold.core.Sharing
  * Text shown by [OuterDisplayContent] on the outer display. Plain snapshot state: the inner screen
  * and the outer-display composition live in the same process, so changing it here recomposes there.
  */
-object OuterDisplayMessage {
+internal object OuterDisplayMessage {
     val choices = listOf("Souriez !", "Regardez l'objectif", "3… 2… 1…", "Merci !")
     var text by mutableStateOf(choices.first())
 }

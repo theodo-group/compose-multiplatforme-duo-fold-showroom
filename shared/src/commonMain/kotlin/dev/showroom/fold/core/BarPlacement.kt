@@ -12,44 +12,30 @@ import androidx.compose.ui.unit.dp
 /** A physical screen edge, already resolved from the layout direction where the platform needs it. */
 enum class BarEdge { Left, Right }
 
-/** How a side bar is drawn, which follows the platform guideline that placed it. */
-enum class SideBarStyle {
-    /**
-     * iPhone Duo: the app's controls share the system vertical bar with the status bar, inside the
-     * safe area the system reserves on that edge. Pinned to the hardware edge, even in RTL.
-     */
-    SystemVerticalBar,
-
-    /** Material 3 navigation rail on the leading edge (mirrored in RTL), inside the safe area. */
-    NavigationRail,
-}
-
 /**
  * Where the app's toolbar and navigation controls (Back, actions, tab bar) belong in the current
  * window.
  *
- * - [Top]: the usual horizontal top bar. Android in a compact-width window or in tabletop posture;
- *   iPhone Duo inner display in portrait; any other iPhone or iPad.
- * - [Side]: a vertical bar along [Side.edge].
- *   - iOS ([SideBarStyle.SystemVerticalBar]): iPhone Duo outer display (closed) and inner display in
- *     landscape, on the status bar edge. In Split View each window gets its own outer edge (the left
- *     window's bar is on the left). Never mirrored for RTL.
- *   - Android ([SideBarStyle.NavigationRail]): medium or expanded width (Pixel Fold unfolded,
- *     landscape) outside tabletop posture, on the leading edge (left, or right in RTL).
+ * - [Top]: the usual horizontal top bar. Always on Android (Material 3 keeps Back and actions in the
+ *   top app bar); iPhone Duo inner display in portrait; any other iPhone or iPad.
+ * - [Side]: a vertical bar along [Side.edge], on the status bar edge: iPhone Duo outer display
+ *   (closed) and inner display in landscape. In Split View each window gets its own outer edge (the
+ *   left window's bar is on the left). Never mirrored for RTL.
  */
 @Immutable
 sealed interface BarPlacement {
     data object Top : BarPlacement
 
     /**
+     * The app's controls share the iPhone Duo system vertical bar with the status bar, inside the
+     * safe area the system reserves on that edge.
+     *
      * @param edge the physical edge holding the bar.
-     * @param style how the bar is drawn.
      * @param itemsTop distance from the window top where app controls start, below the status bar
-     *   that tops the vertical bar ([SideBarStyle.SystemVerticalBar]). 0 when not applicable.
+     *   that tops the vertical bar.
      */
     data class Side(
         val edge: BarEdge,
-        val style: SideBarStyle,
         val itemsTop: Dp = 0.dp,
     ) : BarPlacement
 }

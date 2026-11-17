@@ -3,7 +3,6 @@ package dev.showroom.fold.demos.layout
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -72,7 +71,6 @@ private enum class Forced(val label: String) {
     Auto("Auto"), Bar("Barre"), Rail("Rail"), Drawer("Tiroir")
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun NavigationSuiteContent() {
     var selected by rememberSaveable { mutableStateOf(Dest.Home) }

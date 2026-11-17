@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,12 +37,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /** The platform this binary runs on. Each demo uses it to highlight "its" native-cost card. */
-enum class PlatformKind(val label: String) { Android("Android"), Ios("iOS") }
+internal enum class PlatformKind(val label: String) { Android("Android"), Ios("iOS") }
 
-expect val currentPlatform: PlatformKind
+internal expect val currentPlatform: PlatformKind
 
 /** Live state of one native capability, as reported by the platform (never simulated). */
-enum class CapabilityLevel(val label: String) {
+internal enum class CapabilityLevel(val label: String) {
     Unsupported("Non supporté"),
     Unavailable("Indisponible"),
     Available("Disponible"),
@@ -58,7 +59,7 @@ enum class CapabilityLevel(val label: String) {
  * @param canStart / canStop whether the platform currently allows the action (by default: Available / Active).
  */
 @Immutable
-data class Capability(
+internal data class Capability(
     val id: String,
     val title: String,
     val api: String,
@@ -74,7 +75,7 @@ data class Capability(
  * A platform capability source. Implementations back these properties with Compose state, so
  * reading them from a composable recomposes on every platform change.
  */
-interface CapabilityController {
+internal interface CapabilityController {
     val capabilities: List<Capability>
     val facts: List<Pair<String, String>>
     val events: List<String>
@@ -87,7 +88,7 @@ interface CapabilityController {
 
 /** What one platform needed for a demo: the honest "native bill". */
 @Immutable
-data class NativeCost(
+internal data class NativeCost(
     val platform: PlatformKind,
     val apis: List<String>,
     val effort: String,
@@ -260,7 +261,7 @@ internal fun NativeCostSection(costs: List<NativeCost>) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(cost.platform.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     if (current) {
-                        Spacer(Modifier.padding(4.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             "(cet appareil)",
                             style = MaterialTheme.typography.labelSmall,
@@ -299,7 +300,7 @@ internal fun NoticeBanner(text: String, modifier: Modifier = Modifier) {
 
 /** Visual for content meant for the outer display, shared by Android and iOS. */
 @Composable
-fun OuterDisplayContent(message: String, modifier: Modifier = Modifier) {
+internal fun OuterDisplayContent(message: String, modifier: Modifier = Modifier) {
     Box(
         modifier.fillMaxSize().background(Color(0xFF0B2B25)).safeDrawingPadding().padding(24.dp),
         contentAlignment = Alignment.Center,

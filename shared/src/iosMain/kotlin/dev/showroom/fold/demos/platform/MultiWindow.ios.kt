@@ -3,6 +3,7 @@ package dev.showroom.fold.demos.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,10 +61,9 @@ internal actual fun rememberMultiWindowController(): CapabilityController {
 
 /**
  * One connected scene of this app: role, activation state and, for window scenes, its size
- * against its screen. Read here rather than through readConnectedScenes() so the state uses the
- * UIKit constants (UISceneActivationStateUnattached is -1, not 0).
+ * against its screen. Polled, since no "scenes changed" callback reaches shared code.
  */
-private data class SceneSnapshot(
+internal data class SceneSnapshot(
     val role: String,
     val state: String,
     val width: Double?,
@@ -83,7 +83,7 @@ private data class SceneSnapshot(
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private fun readSceneSnapshots(): List<SceneSnapshot> =
+internal fun readSceneSnapshots(): List<SceneSnapshot> =
     UIApplication.sharedApplication.connectedScenes.mapNotNull { it as? UIScene }.map { scene ->
         val window = scene as? UIWindowScene
         val size = window?.coordinateSpace?.bounds?.useContents { size.width to size.height }
@@ -105,7 +105,7 @@ private fun readSceneSnapshots(): List<SceneSnapshot> =
 private class IosMultiWindowController : CapabilityController {
     private val log = mutableStateListOf<String>()
     private var scenes by mutableStateOf<List<SceneSnapshot>>(emptyList())
-    private var openSessions by mutableStateOf(0)
+    private var openSessions by mutableIntStateOf(0)
     private var supportsMultipleScenes by mutableStateOf(false)
     private var lastRefusal by mutableStateOf<String?>(null)
     private var wasSideBySide = false

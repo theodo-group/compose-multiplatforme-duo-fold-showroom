@@ -54,8 +54,6 @@ data class FoldState(
     val isSeparating: Boolean = false,
     val source: FoldSource = FoldSource.None,
 ) {
-    val isHalfOpened: Boolean get() = posture == Posture.Book || posture == Posture.Tabletop
-
     companion object {
         val None = FoldState()
     }

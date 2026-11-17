@@ -23,8 +23,8 @@ enum class Sharing(val label: String, val description: String) {
  * One entry of the showroom.
  *
  * @param notes short bullet points shown in the info sheet: what is shared, what is specific and why.
- * @param content the demo itself. It is placed under the showroom top bar and fills the remaining space;
- *   window insets are already consumed by the host.
+ * @param content the demo itself. It fills the space the host bar leaves (see [DemoScreen]); window
+ *   insets are already consumed by the host.
  */
 @Immutable
 class Demo(

@@ -3,10 +3,18 @@
 package dev.showroom.fold.demos.panes
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -14,22 +22,29 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
+import dev.showroom.fold.core.rememberSystemBack
 import dev.showroom.fold.fold.FoldState
 import dev.showroom.fold.fold.HingeOrientation
 import dev.showroom.fold.fold.LocalFoldState
+import kotlinx.coroutines.launch
 
-/** One fake French article / message, shared by the three pane demos. */
+/** One fake French article, shared by the three pane demos. */
 internal class Article(
     val id: Int,
     val title: String,
     val author: String,
-    val summary: String,
     val body: String,
     val related: List<Int>,
 )
@@ -55,7 +70,6 @@ internal val sampleArticles: List<Article> = listOf(
         id = index,
         title = title,
         author = author,
-        summary = "Un regard sur « ${title.lowercase()} » : ce qui change pour les concepteurs d'applications.",
         body = "Article ${index + 1} par $author.\n\n" +
             "Les téléphones pliables obligent à repenser l'interface : la même application doit " +
             "s'afficher sur un petit écran extérieur, puis sur un écran intérieur presque deux fois " +
@@ -86,20 +100,76 @@ internal fun widthClassLabel(widthDp: Int): String = when {
 @Composable
 internal fun AdaptationCaption(widthDp: Int, panes: Int, extra: String = "") {
     Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.Start) {
-            Text(
-                text = "Largeur $widthDp dp → ${widthClassLabel(widthDp)} → " +
-                    (if (panes == 1) "1 panneau" else "$panes panneaux") + extra,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+        Text(
+            text = "Largeur $widthDp dp → ${widthClassLabel(widthDp)} → " +
+                (if (panes == 1) "1 panneau" else "$panes panneaux") + extra,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
+    }
+}
+
+@Composable
+internal fun ArticleList(selectedId: Int?, onSelect: (Int) -> Unit) {
+    LazyColumn(Modifier.fillMaxSize()) {
+        items(sampleArticles, key = { it.id }) { article ->
+            ListItem(
+                headlineContent = { Text(article.title, maxLines = 1) },
+                supportingContent = { Text(article.author, maxLines = 1) },
+                colors = ListItemDefaults.colors(
+                    containerColor = if (article.id == selectedId) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                ),
+                modifier = Modifier.clickable { onSelect(article.id) },
             )
         }
     }
 }
 
-/** Clickable modifier kept in one place so list rows stay one-liners. */
-internal fun Modifier.clickableItem(onClick: () -> Unit): Modifier =
-    this.then(Modifier.clickable(onClick = onClick))
+/** Title, author and body, to place in the caller's scrolling column. */
+@Composable
+internal fun ArticleText(article: Article) {
+    Text(article.title, style = MaterialTheme.typography.headlineSmall)
+    Text(
+        article.author,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(vertical = 8.dp),
+    )
+    Text(article.body, style = MaterialTheme.typography.bodyLarge)
+}
+
+/** In-content Back, only for a top host bar: a side bar (iPhone Duo) already has Back at its top. */
+@Composable
+internal fun BackRow(label: String, onBack: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = label)
+        }
+        Text(label, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+/**
+ * Makes system back (and the iOS edge swipe) close panes before the host leaves the demo: this
+ * handler is registered after the host's, so it wins while [navigator] can go back.
+ * Returns the action for on-screen Back buttons, sent through the same dispatcher.
+ */
+@Composable
+internal fun rememberPaneBack(navigator: ThreePaneScaffoldNavigator<*>): () -> Unit {
+    val scope = rememberCoroutineScope()
+    val navigateBack: () -> Unit = { scope.launch { navigator.navigateBack() } }
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = navigator.canNavigateBack(),
+        onBackCompleted = navigateBack,
+    )
+    return rememberSystemBack(navigateBack)
+}
 
 /**
  * The Material pane directive for the window, made fold-aware from [LocalFoldState].

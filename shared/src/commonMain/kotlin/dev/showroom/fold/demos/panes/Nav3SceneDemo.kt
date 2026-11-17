@@ -1,5 +1,6 @@
 package dev.showroom.fold.demos.panes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,8 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,14 +16,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -119,7 +116,9 @@ private class TwoPaneSceneStrategy(private val wide: Boolean) : SceneStrategy<Sc
         return TwoPaneScene(
             key = TwoPaneKey(shown.map { it.contentKey }),
             entries = shown,
-            previousEntries = entries.dropLast(shown.size),
+            // What back leads to: one pop, not the whole scene. NavDisplay only handles back while
+            // this is non-empty, so dropping both shown entries would let back leave the demo.
+            previousEntries = entries.dropLast(1),
         )
     }
 }
@@ -127,7 +126,7 @@ private class TwoPaneSceneStrategy(private val wide: Boolean) : SceneStrategy<Sc
 @Composable
 private fun Nav3SceneContent() {
     // Not saveable on purpose: see notes.
-    val backStack: SnapshotStateList<Screen> = remember { mutableStateListOf(Screen.Home) }
+    val backStack = remember { mutableStateListOf<Screen>(Screen.Home) }
     val widthDp = currentWidthDp()
     // Two entries when wide enough, or when a separating fold cuts the window (never one pane across it).
     val wide = widthDp >= WIDE_BREAKPOINT_DP || LocalFoldState.current.separatingVerticalHinge() != null
@@ -182,7 +181,10 @@ private fun Nav3SceneContent() {
             sceneStrategies = listOf(strategy),
             entryProvider = entryProvider {
                 entry<Screen.Home> {
-                    ArticleListPane(onOpen = { push(Screen.Detail(it)) }, selected = (backStack.last() as? Screen.Detail)?.articleId)
+                    ArticleList(
+                        selectedId = (backStack.last() as? Screen.Detail)?.articleId,
+                        onSelect = { push(Screen.Detail(it)) },
+                    )
                 }
                 entry<Screen.Detail> { key ->
                     DetailPane(articleId = key.articleId, onOpen = { push(Screen.Detail(it)) })
@@ -193,37 +195,10 @@ private fun Nav3SceneContent() {
 }
 
 @Composable
-private fun ArticleListPane(onOpen: (Int) -> Unit, selected: Int?) {
-    LazyColumn(Modifier.fillMaxSize()) {
-        items(sampleArticles, key = { it.id }) { article ->
-            ListItem(
-                headlineContent = { Text(article.title, maxLines = 1) },
-                supportingContent = { Text(article.author, maxLines = 1) },
-                colors = ListItemDefaults.colors(
-                    containerColor = if (article.id == selected) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
-                ),
-                modifier = Modifier.clickableItem { onOpen(article.id) },
-            )
-        }
-    }
-}
-
-@Composable
 private fun DetailPane(articleId: Int, onOpen: (Int) -> Unit) {
     val article = articleById(articleId)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Text(article.title, style = MaterialTheme.typography.headlineSmall)
-        Text(
-            article.author,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(vertical = 8.dp),
-        )
-        Text(article.body, style = MaterialTheme.typography.bodyLarge)
+        ArticleText(article)
         Text(
             "À lire ensuite (ajoute une entrée à la pile)",
             style = MaterialTheme.typography.titleSmall,
@@ -232,7 +207,7 @@ private fun DetailPane(articleId: Int, onOpen: (Int) -> Unit) {
         article.related.forEach { id ->
             ListItem(
                 headlineContent = { Text(articleById(id).title) },
-                modifier = Modifier.clickableItem { onOpen(id) },
+                modifier = Modifier.clickable { onOpen(id) },
             )
         }
     }

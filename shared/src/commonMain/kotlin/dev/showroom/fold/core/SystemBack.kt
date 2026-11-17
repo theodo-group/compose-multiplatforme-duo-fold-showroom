@@ -10,7 +10,7 @@ import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 
 /**
  * Returns an action that sends a back event through the same dispatcher as Android system back
- * and the iOS edge swipe, so the innermost enabled `BackHandler` (a demo's list/detail, a
+ * and the iOS edge swipe, so the innermost enabled `NavigationBackHandler` (a demo's list/detail, a
  * Navigation 3 `NavDisplay`, then the host) handles it first. Use it for on-screen Back buttons.
  *
  * Without a dispatcher in the composition, [fallback] runs instead.

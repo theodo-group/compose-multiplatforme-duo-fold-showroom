@@ -18,8 +18,6 @@ import kotlinx.cinterop.useContents
 import kotlinx.coroutines.delay
 import platform.Foundation.NSClassFromString
 import platform.Foundation.NSProcessInfo
-import platform.UIKit.UIApplication
-import platform.UIKit.UIScene
 import platform.UIKit.UIViewController
 
 /**
@@ -78,25 +76,6 @@ fun OuterDisplayViewController(): UIViewController = ComposeUIViewController {
 private const val CAMERA_ACCESSORY = "camera-accessory"
 private const val MOVE_APP = "move-app"
 
-/** Snapshot of `UIApplication.connectedScenes`, refreshed by polling (shared with the multi-window demo). */
-internal data class SceneInfo(val role: String, val state: String, val title: String?)
-
-internal fun readConnectedScenes(): List<SceneInfo> =
-    UIApplication.sharedApplication.connectedScenes.mapNotNull { it as? UIScene }.map { scene ->
-        SceneInfo(
-            role = scene.session.role ?: "",
-            // UISceneActivationState raw values: unattached -1, foregroundActive 0, foregroundInactive 1, background 2.
-            state = when (scene.activationState) {
-                -1L -> "unattached"
-                0L -> "foregroundActive"
-                1L -> "foregroundInactive"
-                2L -> "background"
-                else -> "?(${scene.activationState})"
-            },
-            title = scene.title,
-        )
-    }
-
 internal fun shortRole(role: String): String =
     role.removePrefix("UIWindowSceneSessionRole").removePrefix("UISceneSessionRole").ifEmpty { role }
 
@@ -120,7 +99,7 @@ internal actual fun rememberDisplayModesController(): CapabilityController {
     SideEffect { controller.deviceHasHinge = deviceHasHinge }
     LaunchedEffect(controller) {
         while (true) {
-            controller.scenes = readConnectedScenes()
+            controller.scenes = readSceneSnapshots()
             delay(1_000)
         }
     }
@@ -130,7 +109,7 @@ internal actual fun rememberDisplayModesController(): CapabilityController {
 @OptIn(BetaInteropApi::class)
 private class IosDisplayModesController : CapabilityController {
     var deviceHasHinge by mutableStateOf(false)
-    var scenes by mutableStateOf<List<SceneInfo>>(emptyList())
+    var scenes by mutableStateOf<List<SceneSnapshot>>(emptyList())
 
     // Runtime lookup: works whatever the Kotlin/Native bindings know about.
     private val sceneAccessoryClassExists = NSClassFromString("UISceneAccessory") != null
@@ -211,7 +190,7 @@ private class IosDisplayModesController : CapabilityController {
             add("Pont Swift enregistré" to if (bridge.host != null) "oui" else "non")
             add("Charnière (UIHingeInteraction)" to if (deviceHasHinge) "oui" else "non")
             add("Accessoire activé" to if (bridge.enabled) "oui" else "non")
-            add("onAvailabilityChange" to (bridge.accessoryAvailable?.let { if (it) "true" else "false" } ?: "—"))
+            add("onAvailabilityChange" to (bridge.accessoryAvailable?.toString() ?: "—"))
             add("Session caméra" to if (bridge.cameraRunning) "active" else "arrêtée")
             add("Scènes connectées" to scenes.joinToString { shortRole(it.role) }.ifEmpty { "—" })
         }

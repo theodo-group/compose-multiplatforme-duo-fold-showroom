@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -160,7 +159,7 @@ private fun TabletopPlayerScreen() {
                 message = "Cet appareil ne signale pas de pli : le lecteur garde sa mise en page classique, commandes superposées. La séparation vidéo / commandes demande une vraie posture chevalet : charnière horizontale, appareil entrouvert (~90°).",
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
-        } else if (arrangement?.mode != TwoPaneMode.FoldTopBottom) {
+        } else if (arrangement != null && arrangement.mode != TwoPaneMode.FoldTopBottom) {
             Text(
                 text = "Posture actuelle : ${fold.posture.label.lowercase()}. Posez l'appareil en chevalet (charnière horizontale, ~90°) pour séparer vidéo et commandes (iPhone Duo : tournez-le ; sur émulateur ou simulateur : commandes de pliage et de rotation).",
                 style = MaterialTheme.typography.bodySmall,
@@ -198,9 +197,9 @@ private fun playerLayoutText(a: TwoPaneArrangement, posture: Posture): String = 
     TwoPaneMode.FoldStartEnd ->
         "Charnière verticale séparante → vidéo d'un côté du pli, playlist de l'autre" + gapText(a)
     TwoPaneMode.Balanced ->
-        "${a.reason.label.replaceFirstChar { it.uppercase() }} · ${a.widthDp} dp ≥ 600 dp → vidéo (commandes superposées) + playlist"
+        "${a.reason.label} · ${a.widthDp} dp ≥ 600 dp → vidéo (commandes superposées) + playlist"
     TwoPaneMode.Single -> {
-        val why = if (posture == Posture.Closed) "Écran fermé" else a.reason.label.replaceFirstChar { it.uppercase() }
+        val why = if (posture == Posture.Closed) "Écran fermé" else a.reason.label
         "$why · ${a.widthDp} dp → vidéo avec commandes superposées"
     }
 }

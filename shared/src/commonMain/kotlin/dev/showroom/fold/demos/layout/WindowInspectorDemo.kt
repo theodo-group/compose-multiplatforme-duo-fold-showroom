@@ -43,7 +43,6 @@ import dev.showroom.fold.core.BarPlacement
 import dev.showroom.fold.core.Demo
 import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
-import dev.showroom.fold.core.SideBarStyle
 import dev.showroom.fold.fold.LocalFoldState
 import kotlin.math.roundToInt
 
@@ -146,16 +145,9 @@ private fun WindowInspector() {
 
 private fun barPlacementText(placement: BarPlacement): String = when (placement) {
     BarPlacement.Top -> "en haut"
-    is BarPlacement.Side -> {
-        val edge = when (placement.edge) {
-            BarEdge.Left -> "latérale gauche"
-            BarEdge.Right -> "latérale droite"
-        }
-        val style = when (placement.style) {
-            SideBarStyle.SystemVerticalBar -> "barre verticale système"
-            SideBarStyle.NavigationRail -> "rail"
-        }
-        "$edge ($style)"
+    is BarPlacement.Side -> when (placement.edge) {
+        BarEdge.Left -> "latérale gauche (barre verticale système)"
+        BarEdge.Right -> "latérale droite (barre verticale système)"
     }
 }
 

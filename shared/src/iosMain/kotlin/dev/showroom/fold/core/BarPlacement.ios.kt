@@ -49,5 +49,5 @@ private fun SHVerticalBarObserverView.toBarPlacement(): BarPlacement {
         else -> return BarPlacement.Top
     }
     // UIKit points are Compose dp on iOS.
-    return BarPlacement.Side(edge = edge, style = SideBarStyle.SystemVerticalBar, itemsTop = barItemsTop.dp)
+    return BarPlacement.Side(edge = edge, itemsTop = barItemsTop.dp)
 }

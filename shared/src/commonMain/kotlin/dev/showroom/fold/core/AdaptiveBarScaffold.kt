@@ -2,7 +2,6 @@ package dev.showroom.fold.core
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,10 +49,9 @@ private val TabGroupGap = 24.dp
  *   its own tab / navigation bar in that case.
  * - [BarPlacement.Side]: a vertical bar on the given physical edge. [navigationIcon] first at the
  *   top, then [actions] in order of priority, then [tabs] as a separate group lower down. On iPhone
- *   Duo it fills the safe area the system reserves next to the status bar and starts below it; on
- *   Android it is a Material [NavigationRail] on the leading edge. The [title] moves to a compact
- *   header at the top of the content area. Use icon buttons (see [BarItemButton]) with a content
- *   description: they fit both orientations.
+ *   Duo it fills the safe area the system reserves next to the status bar and starts below it. The
+ *   [title] moves to a compact header at the top of the content area. Use icon buttons (see
+ *   [BarItemButton]) with a content description: they fit both orientations.
  *
  * Like [Scaffold], [content] receives the padding that keeps it clear of the bars and of the
  * remaining safe area; apply it (and consume it) or pass it to a list as content padding. The safe
@@ -114,33 +112,19 @@ private fun SideBarLayout(
 
     val barOnLeft = placement.edge == BarEdge.Left
     val barSide = if (barOnLeft) WindowInsetsSides.Left else WindowInsetsSides.Right
-    // A Material rail with nothing in it is only lost width; the iPhone Duo strip is reserved by the
-    // system anyway (it holds the status bar), so it is drawn even when empty.
-    val showBar = placement.style == SideBarStyle.SystemVerticalBar ||
-        navigationIcon != null || actions != null || tabs.isNotEmpty()
     // Safe area the bar covers (consumed here); every other edge keeps its own safe area (rounded
     // corners, cutout, the other Split View window).
-    val railSide = if (showBar) barSide else WindowInsetsSides.Top
-    val farLeft = if (showBar && barOnLeft) 0.dp else left
-    val farRight = if (showBar && !barOnLeft) 0.dp else right
-    val header: @Composable ColumnScope.() -> Unit = { navigationIcon?.invoke(); actions?.invoke() }
+    val farLeft = if (barOnLeft) 0.dp else left
+    val farRight = if (!barOnLeft) 0.dp else right
+    // The system reserves the bar edge's safe area for its vertical bar, status bar on top: the
+    // app's controls fill that strip, below the status bar. Drawn even when empty.
     val bar = @Composable {
-        if (showBar) when (placement.style) {
-            // The system reserves the bar edge's safe area for its vertical bar, status bar on top:
-            // the app's controls fill that strip, below the status bar.
-            SideBarStyle.SystemVerticalBar -> NavigationRail(
-                modifier = Modifier.width(max(if (barOnLeft) left else right, SystemBarMinWidth)),
-                containerColor = MaterialTheme.colorScheme.background,
-                header = header,
-                windowInsets = WindowInsets(top = max(top, placement.itemsTop), bottom = bottom),
-            ) { BarTabs(tabs) }
-            // Material rail: inside the safe area, like any other app content.
-            SideBarStyle.NavigationRail -> NavigationRail(
-                containerColor = MaterialTheme.colorScheme.background,
-                header = header,
-                windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + barSide),
-            ) { BarTabs(tabs) }
-        }
+        NavigationRail(
+            modifier = Modifier.width(max(if (barOnLeft) left else right, SystemBarMinWidth)),
+            containerColor = MaterialTheme.colorScheme.background,
+            header = { navigationIcon?.invoke(); actions?.invoke() },
+            windowInsets = WindowInsets(top = max(top, placement.itemsTop), bottom = bottom),
+        ) { BarTabs(tabs) }
     }
 
     Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -150,7 +134,7 @@ private fun SideBarLayout(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .consumeWindowInsets(WindowInsets.safeDrawing.only(railSide + WindowInsetsSides.Top)),
+                    .consumeWindowInsets(WindowInsets.safeDrawing.only(barSide + WindowInsetsSides.Top)),
             ) {
                 Box(
                     Modifier

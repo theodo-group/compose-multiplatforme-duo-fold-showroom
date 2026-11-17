@@ -151,11 +151,7 @@ private fun HingeGaugeContent(real: FoldState, fold: FoldState, tweaks: HingeTwe
                     Timeline(events)
                 }
             },
-            first = {
-                Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    GaugeCard(real, fold, angleTweaked, Modifier.fillMaxWidth().weight(1f))
-                }
-            },
+            first = { GaugeCard(real, fold, angleTweaked, Modifier.fillMaxSize().padding(16.dp)) },
             second = {
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -173,12 +169,9 @@ private fun HingeGaugeContent(real: FoldState, fold: FoldState, tweaks: HingeTwe
 private fun gaugeLayoutText(a: TwoPaneArrangement): String = when (a.mode) {
     TwoPaneMode.FoldStartEnd -> "Pli vertical séparant → schéma d'un côté, mesures de l'autre" + gapText(a)
     TwoPaneMode.FoldTopBottom -> "Pli horizontal séparant → schéma au-dessus, mesures en dessous" + gapText(a)
-    TwoPaneMode.Balanced -> "${a.reason.label.replaceFirstChar { it.uppercase() }} · ${a.widthDp} dp de large → 2 colonnes"
-    TwoPaneMode.Single -> "${a.reason.label.replaceFirstChar { it.uppercase() }} · ${a.widthDp} dp de large → 1 colonne"
+    TwoPaneMode.Balanced -> "${a.reason.label} · ${a.widthDp} dp de large → 2 colonnes"
+    TwoPaneMode.Single -> "${a.reason.label} · ${a.widthDp} dp de large → 1 colonne"
 }
-
-internal fun gapText(a: TwoPaneArrangement): String =
-    if (a.hingeThicknessDp > 0) " (zone de ${a.hingeThicknessDp} dp laissée vide)" else ""
 
 /**
  * The two tweaks. Each is disabled with a one-line reason when the real state does not allow it;
@@ -216,7 +209,7 @@ private fun TweaksCard(real: FoldState, tweaks: HingeTweaksState) {
                 },
             )
             val angle = tweaks.angleDegrees
-            if (angle != null && angleBlocker == null && range != null) {
+            if (angle != null && range != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "${angle.coerceIn(range).roundToInt()}°",
@@ -370,11 +363,11 @@ private fun HingeSideView(angleDegrees: Float, onTable: Boolean, modifier: Modif
     }
 }
 
-private fun DrawScope.drawHalf(from: Offset, to: Offset, inner: Offset, body: androidx.compose.ui.graphics.Color, screen: androidx.compose.ui.graphics.Color, thickness: Float) {
+private fun DrawScope.drawHalf(from: Offset, to: Offset, inner: Offset, body: Color, screen: Color, thickness: Float) {
     drawLine(body, from, to, strokeWidth = thickness, cap = StrokeCap.Round)
     val shift = inner * (thickness / 2f)
     // Screen face, slightly shorter than the body.
-    val along = (to - from)
+    val along = to - from
     drawLine(screen, from + shift + along * 0.04f, to + shift - along * 0.04f, strokeWidth = thickness * 0.35f, cap = StrokeCap.Round)
 }
 
@@ -422,9 +415,7 @@ private fun realVsTweaked(real: String, shown: String): String =
     if (real == shown) real else "$real → $shown (réglage)"
 
 private fun Rect.describe(density: Float): String {
-    val w = (width / density)
-    val h = (height / density)
-    return "x ${left.roundToInt()} · y ${top.roundToInt()} px · ${w.fmt(0)} × ${h.fmt(0)} dp"
+    return "x ${left.roundToInt()} · y ${top.roundToInt()} px · ${(width / density).fmt(0)} × ${(height / density).fmt(0)} dp"
 }
 
 @Composable
@@ -463,7 +454,7 @@ private fun WindowMiniMap(real: FoldState, fold: FoldState, contentInWindow: Rec
             }
             fun drawHinge(h: Rect, color: Color) {
                 val minLine = 2.dp.toPx()
-                val vertical = real.orientation?.let { it == HingeOrientation.Vertical } ?: (h.height >= h.width)
+                val vertical = real.isHingeVertical(h)
                 val w = max(h.width * scale, if (vertical) minLine else 0f)
                 val hh = max(h.height * scale, if (vertical) 0f else minLine)
                 val cx = h.center.x * scale
@@ -484,7 +475,7 @@ private fun WindowMiniMap(real: FoldState, fold: FoldState, contentInWindow: Rec
 }
 
 @Composable
-private fun Legend(color: androidx.compose.ui.graphics.Color, text: String) {
+private fun Legend(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Surface(color = color, shape = CircleShape, modifier = Modifier.size(10.dp)) {}
         Spacer(Modifier.width(6.dp))

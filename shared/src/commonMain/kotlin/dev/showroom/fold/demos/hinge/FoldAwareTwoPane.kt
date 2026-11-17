@@ -16,9 +16,9 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.fold.FoldState
@@ -43,12 +43,12 @@ enum class TwoPaneMode {
 
 /** Why [FoldAwareTwoPane] chose its mode; [label] is ready to show (French). */
 enum class TwoPaneReason(val label: String) {
-    SeparatingFold("pli séparant"),
-    NoFold("pas de pli dans la fenêtre"),
-    NotSeparating("pli non séparant"),
-    HingeOutside("pli hors de cette zone"),
-    HingePartial("pli qui ne traverse qu'une partie de la zone"),
-    PaneTooSmall("pli trop près du bord"),
+    SeparatingFold("Pli séparant"),
+    NoFold("Pas de pli dans la fenêtre"),
+    NotSeparating("Pli non séparant"),
+    HingeOutside("Pli hors de cette zone"),
+    HingePartial("Pli qui ne traverse qu'une partie de la zone"),
+    PaneTooSmall("Pli trop près du bord"),
 }
 
 /**
@@ -64,7 +64,6 @@ data class TwoPaneArrangement(
     val reason: TwoPaneReason,
     val hinge: LocalHinge?,
     val widthDp: Int,
-    val heightDp: Int,
     val hingeThicknessDp: Int,
 ) {
     val isFoldSplit: Boolean get() = mode == TwoPaneMode.FoldStartEnd || mode == TwoPaneMode.FoldTopBottom
@@ -91,8 +90,7 @@ fun rememberFoldAwareTwoPaneState(): FoldAwareTwoPaneState = remember { FoldAwar
  *
  * Hinge bounds come in window coordinates; the layout measures its own position in the window, so it
  * works when it does not fill the window (top bar above, a status line or hint card...).
- *
- * @param minPaneSize a fold leaving less than this on one side is ignored (fallback).
+ * A fold leaving less than [MIN_PANE_SIZE] on one side is ignored (fallback).
  */
 @Composable
 fun FoldAwareTwoPane(
@@ -101,8 +99,6 @@ fun FoldAwareTwoPane(
     modifier: Modifier = Modifier,
     state: FoldAwareTwoPaneState? = null,
     wideBreakpoint: Dp = 600.dp,
-    minPaneSize: Dp = 120.dp,
-    balancedFraction: Float = 0.5f,
     singlePane: @Composable (TwoPaneArrangement) -> Unit = first,
 ) {
     val fold = LocalFoldState.current
@@ -110,26 +106,21 @@ fun FoldAwareTwoPane(
     val tracker = rememberWindowBoundsTracker()
 
     BoxWithConstraints(modifier.then(tracker.modifier)) {
-        val widthPx = constraints.maxWidth
-        val heightPx = constraints.maxHeight
-        val windowBounds = tracker.bounds
-        val arrangement = remember(fold, windowBounds, widthPx, heightPx, density, wideBreakpoint, minPaneSize) {
-            arrange(
-                fold = fold,
-                layoutInWindow = windowBounds,
-                widthPx = widthPx,
-                heightPx = heightPx,
-                densityValue = density.density,
-                wideBreakpointPx = with(density) { wideBreakpoint.toPx() },
-                minPanePx = with(density) { minPaneSize.toPx() },
-            )
-        }
+        val arrangement = arrange(
+            fold = fold,
+            layoutInWindow = tracker.bounds,
+            widthPx = constraints.maxWidth,
+            heightPx = constraints.maxHeight,
+            densityValue = density.density,
+            wideBreakpointPx = with(density) { wideBreakpoint.toPx() },
+            minPanePx = with(density) { MIN_PANE_SIZE.toPx() },
+        )
         if (state != null) SideEffect { state.arrangement = arrangement }
 
         if (arrangement.mode == TwoPaneMode.Single) {
             Box(Modifier.fillMaxSize()) { singlePane(arrangement) }
         } else {
-            TwoPaneLayout(arrangement, balancedFraction, first, second)
+            TwoPaneLayout(arrangement, first, second)
         }
     }
 }
@@ -137,11 +128,9 @@ fun FoldAwareTwoPane(
 @Composable
 private fun TwoPaneLayout(
     arrangement: TwoPaneArrangement,
-    balancedFraction: Float,
     first: @Composable (TwoPaneArrangement) -> Unit,
     second: @Composable (TwoPaneArrangement) -> Unit,
 ) {
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     Layout(
         contents = listOf(
             { Box(Modifier.clipToBounds()) { first(arrangement) } },
@@ -165,12 +154,12 @@ private fun TwoPaneLayout(
                 IntRect(0, 0, width, top) to IntRect(0, bottom, width, height)
             }
             else -> {
-                val split = (width * balancedFraction).roundToInt()
+                val split = width / 2
                 IntRect(0, 0, split, height) to IntRect(split, 0, width, height)
             }
         }
         // In RTL the "start" pane is the right one; for a top/bottom split order is unchanged.
-        val swap = rtl && arrangement.mode != TwoPaneMode.FoldTopBottom
+        val swap = layoutDirection == LayoutDirection.Rtl && arrangement.mode != TwoPaneMode.FoldTopBottom
         val firstRect = if (swap) b else a
         val secondRect = if (swap) a else b
         val p1 = firstMeasurables.map { it.measure(Constraints.fixed(firstRect.width, firstRect.height)) }
@@ -183,12 +172,9 @@ private fun TwoPaneLayout(
     }
 }
 
-private data class IntRect(val left: Int, val top: Int, val right: Int, val bottom: Int) {
-    val width: Int get() = (right - left).coerceAtLeast(0)
-    val height: Int get() = (bottom - top).coerceAtLeast(0)
-}
+private val MIN_PANE_SIZE = 120.dp
 
-internal fun arrange(
+private fun arrange(
     fold: FoldState,
     layoutInWindow: Rect?,
     widthPx: Int,
@@ -198,21 +184,13 @@ internal fun arrange(
     minPanePx: Float,
 ): TwoPaneArrangement {
     val hinge = layoutInWindow?.let { fold.hingeIn(it) }
-    val widthDp = (widthPx / densityValue).roundToInt()
-    val heightDp = (heightPx / densityValue).roundToInt()
 
-    fun result(mode: TwoPaneMode, reason: TwoPaneReason) = TwoPaneArrangement(
+    fun result(mode: TwoPaneMode, reason: TwoPaneReason, hingeThicknessPx: Float = 0f) = TwoPaneArrangement(
         mode = mode,
         reason = reason,
         hinge = hinge,
-        widthDp = widthDp,
-        heightDp = heightDp,
-        hingeThicknessDp = if (mode == TwoPaneMode.FoldStartEnd || mode == TwoPaneMode.FoldTopBottom) {
-            val b = hinge!!.bounds
-            ((if (hinge.orientation == HingeOrientation.Vertical) b.width else b.height) / densityValue).roundToInt()
-        } else {
-            0
-        },
+        widthDp = (widthPx / densityValue).roundToInt(),
+        hingeThicknessDp = (hingeThicknessPx / densityValue).roundToInt(),
     )
 
     val reason = when {
@@ -226,7 +204,11 @@ internal fun arrange(
             val before = if (vertical) b.left else b.top
             val after = if (vertical) widthPx - b.right else heightPx - b.bottom
             if (before >= minPanePx && after >= minPanePx) {
-                return result(if (vertical) TwoPaneMode.FoldStartEnd else TwoPaneMode.FoldTopBottom, TwoPaneReason.SeparatingFold)
+                return if (vertical) {
+                    result(TwoPaneMode.FoldStartEnd, TwoPaneReason.SeparatingFold, hingeThicknessPx = b.width)
+                } else {
+                    result(TwoPaneMode.FoldTopBottom, TwoPaneReason.SeparatingFold, hingeThicknessPx = b.height)
+                }
             }
             TwoPaneReason.PaneTooSmall
         }

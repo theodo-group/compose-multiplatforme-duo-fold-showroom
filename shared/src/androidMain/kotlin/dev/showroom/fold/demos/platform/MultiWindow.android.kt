@@ -5,17 +5,16 @@ import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.core.util.Consumer
 import androidx.core.app.MultiWindowModeChangedInfo
@@ -26,7 +25,7 @@ private const val NEW_WINDOW = "new-window"
 
 @Composable
 internal actual fun rememberMultiWindowController(): CapabilityController {
-    val activity = LocalContext.current.findHostActivity()
+    val activity = LocalActivity.current
     val controller = remember(activity) { AndroidMultiWindowController(activity) }
 
     // Window size or configuration changed (the activity is not recreated: see configChanges).
@@ -47,17 +46,17 @@ internal actual fun rememberMultiWindowController(): CapabilityController {
 
 private class AndroidMultiWindowController(private val activity: Activity?) : CapabilityController {
     val log = mutableStateListOf<String>()
+    // Window metrics and the multi-window flag are not observable: bump this to re-read them.
     private var revision by mutableIntStateOf(0)
-    private var inMultiWindow by mutableStateOf(false)
+    private val inMultiWindow get() = activity?.isInMultiWindowMode == true
 
     fun refresh() {
-        inMultiWindow = activity?.isInMultiWindowMode == true
         revision++
     }
 
     override val capabilities: List<Capability>
         get() {
-            revision // read to recompose on refresh
+            revision
             val multi = Capability(
                 id = MULTI_WINDOW,
                 title = "Mode multi-fenêtre",

@@ -1,7 +1,6 @@
 package dev.showroom.fold.demos.platform
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.draganddrop.dragAndDropSource
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -78,7 +78,7 @@ private val dragDropCosts = listOf(
         platform = PlatformKind.Ios,
         apis = listOf(
             "DragAndDropTransferData(listOf(UIDragItem(NSItemProvider(NSString))))",
-            "UIDragItem.localObject, NSItemProvider.loadObjectOfClass(NSString)",
+            "UIDragItem.localObject, NSItemProvider.loadItemForTypeIdentifier(public.plain-text)",
         ),
         effort = "≈ 70 lignes Kotlin iosMain, appels UIKit directs, aucune ligne Swift.",
         gotchas = listOf(
@@ -97,7 +97,7 @@ val dragDropDemo = Demo(
         "Partagé : Modifier.dragAndDropSource / dragAndDropTarget, le retour visuel (survol, zone active) et toute la logique.",
         "Spécifique : la charge utile et la lecture du texte déposé, soit trois fonctions expect/actual (≈ 35 lignes Android, ≈ 70 lignes iOS).",
         "Android : ClipData texte + View.DRAG_FLAG_GLOBAL pour sortir de l'app ; lecture via toAndroidDragEvent().clipData.",
-        "iOS : UIDragItem + NSItemProvider(NSString) ; localObject pour le chemin rapide interne, loadObjectOfClass (asynchrone) pour le texte d'une autre app.",
+        "iOS : UIDragItem + NSItemProvider(NSString) ; localObject pour le chemin rapide interne, loadItemForTypeIdentifier (asynchrone) pour le texte d'une autre app.",
         "Démarrage par appui long sur les deux plateformes (détecteur par défaut de Compose). Entre apps : écran partagé Android, Split View ou deux fenêtres sur iPhone Duo.",
     ),
     content = { DragDropContent() },
@@ -107,12 +107,9 @@ private val sampleItems = listOf(
     "Charnière", "Écran externe", "Posture livre", "Mode chevalet", "Double volet", "Fenêtre adjacente",
 )
 
-private class DropEntry(val text: String, val fromThisApp: Boolean)
-
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DragDropContent() {
-    val dropped = remember { mutableStateListOf<DropEntry>() }
+    val dropped = remember { mutableStateListOf<DroppedText>() }
     var dragInProgress by remember { mutableStateOf(false) }
     var hovering by remember { mutableStateOf(false) }
     var lastMessage by remember { mutableStateOf<String?>(null) }
@@ -135,7 +132,7 @@ private fun DragDropContent() {
                     if (result == null || result.text.isBlank()) {
                         lastMessage = "Dépôt reçu, mais aucun texte lisible."
                     } else {
-                        dropped.add(0, DropEntry(result.text, result.fromThisApp))
+                        dropped.add(0, result)
                         lastMessage = null
                     }
                 }
@@ -188,7 +185,7 @@ private fun SourcePane(modifier: Modifier) {
             ) {
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("⠿", color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f))
-                    Spacer(Modifier.padding(6.dp))
+                    Spacer(Modifier.width(12.dp))
                     Text(item, style = MaterialTheme.typography.bodyLarge)
                 }
             }
@@ -198,7 +195,7 @@ private fun SourcePane(modifier: Modifier) {
 
 @Composable
 private fun DropPane(
-    dropped: List<DropEntry>,
+    dropped: List<DroppedText>,
     dragInProgress: Boolean,
     hovering: Boolean,
     lastMessage: String?,
@@ -253,8 +250,8 @@ private fun DropPane(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(entry.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f), maxLines = 3)
-                    Spacer(Modifier.padding(4.dp))
-                    LevelLikeTag(if (entry.fromThisApp) "cette app" else "autre app", highlighted = !entry.fromThisApp)
+                    Spacer(Modifier.width(8.dp))
+                    OriginTag(if (entry.fromThisApp) "cette app" else "autre app", highlighted = !entry.fromThisApp)
                 }
             }
             Spacer(Modifier.height(4.dp))
@@ -263,7 +260,7 @@ private fun DropPane(
 }
 
 @Composable
-private fun LevelLikeTag(text: String, highlighted: Boolean) {
+private fun OriginTag(text: String, highlighted: Boolean) {
     val scheme = MaterialTheme.colorScheme
     Text(
         text,
