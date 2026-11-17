@@ -36,8 +36,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.showroom.fold.core.BarItem
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.HostBarItems
+import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
+import dev.showroom.fold.core.isSide
 import dev.showroom.fold.fold.LocalFoldState
 import dev.showroom.fold.fold.Posture
 
@@ -113,14 +117,31 @@ private fun BookReaderScreen() {
             },
         )
 
-        ReaderNavigation(
-            label = if (shownLast > shownFirst) "Pages ${shownFirst + 1}–${shownLast + 1} sur $PAGE_COUNT" else "Page ${shownFirst + 1} sur $PAGE_COUNT",
-            progress = (shownLast + 1f) / PAGE_COUNT,
-            canGoBack = shownFirst > 0,
-            canGoForward = shownFirst + pagesPerView < PAGE_COUNT,
-            onBack = ::previous,
-            onForward = ::next,
-        )
+        val label = if (shownLast > shownFirst) "Pages ${shownFirst + 1}–${shownLast + 1} sur $PAGE_COUNT" else "Page ${shownFirst + 1} sur $PAGE_COUNT"
+        val progress = (shownLast + 1f) / PAGE_COUNT
+        val canGoBack = shownFirst > 0
+        val canGoForward = shownFirst + pagesPerView < PAGE_COUNT
+        if (LocalBarPlacement.current.isSide) {
+            // Vertical bar (iPhone Duo closed or landscape, rail on Android): previous / next move to
+            // the host bar, only the reading position stays with the content.
+            HostBarItems(
+                actions = listOf(
+                    BarItem("book-previous", Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Page précédente", enabled = canGoBack, onClick = ::previous),
+                    BarItem("book-next", Icons.AutoMirrored.Filled.KeyboardArrowRight, "Page suivante", enabled = canGoForward, onClick = ::next),
+                ),
+            )
+            ReaderProgress(label = label, progress = progress)
+        } else {
+            ReaderNavigation(
+                label = label,
+                progress = progress,
+                canGoBack = canGoBack,
+                canGoForward = canGoForward,
+                splitAtFold = arrangement?.mode == TwoPaneMode.FoldStartEnd,
+                onBack = ::previous,
+                onForward = ::next,
+            )
+        }
     }
 }
 
@@ -258,33 +279,88 @@ private fun EndOfBook(arrangement: TwoPaneArrangement) {
     }
 }
 
+/** Reading position only (no controls): used when previous / next live in the host's vertical bar. */
+@Composable
+private fun ReaderProgress(label: String, progress: Float) {
+    Column(Modifier.fillMaxWidth()) {
+        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+        // Start-aligned, never centred: in book posture the centre of the row is the fold.
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+    }
+}
+
+/**
+ * Bottom toolbar, for a top bar host only. With a vertical fold ([splitAtFold]) the row is cut into
+ * two equal halves, one per side of the fold, so no control or text sits on the crease.
+ */
 @Composable
 private fun ReaderNavigation(
     label: String,
     progress: Float,
     canGoBack: Boolean,
     canGoForward: Boolean,
+    splitAtFold: Boolean,
     onBack: () -> Unit,
     onForward: () -> Unit,
 ) {
+    @Composable
+    fun PreviousButton() {
+        FilledTonalIconButton(onClick = onBack, enabled = canGoBack) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Page précédente")
+        }
+    }
+
+    @Composable
+    fun NextButton() {
+        FilledTonalIconButton(onClick = onForward, enabled = canGoForward) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Page suivante")
+        }
+    }
+
     Surface(tonalElevation = 2.dp) {
         Column {
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                FilledTonalIconButton(onClick = onBack, enabled = canGoBack) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Page précédente")
+            if (splitAtFold) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    // First half: previous + position, ending before the fold.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f).padding(start = 12.dp, end = 16.dp),
+                    ) {
+                        PreviousButton()
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.weight(1f).padding(start = 12.dp),
+                        )
+                    }
+                    // Second half: next, at the outer edge.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.weight(1f).padding(start = 16.dp, end = 12.dp),
+                    ) {
+                        NextButton()
+                    }
                 }
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                )
-                FilledTonalIconButton(onClick = onForward, enabled = canGoForward) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Page suivante")
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    PreviousButton()
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f),
+                    )
+                    NextButton()
                 }
             }
         }

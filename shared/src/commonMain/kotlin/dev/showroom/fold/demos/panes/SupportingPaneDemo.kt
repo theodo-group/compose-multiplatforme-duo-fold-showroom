@@ -39,6 +39,9 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.Demo
 import dev.showroom.fold.core.Sharing
+import dev.showroom.fold.core.LocalBarPlacement
+import dev.showroom.fold.core.isSide
+import dev.showroom.fold.core.rememberSystemBack
 
 val supportingPaneDemo = Demo(
     id = "supporting-pane",
@@ -50,7 +53,9 @@ val supportingPaneDemo = Demo(
         "Large : article principal + panneau secondaire côte à côte ; compact : le panneau secondaire est une destination (bouton « Articles liés ») avec flèche de retour visible.",
         "L'article affiché est un état local de la démo, pas une destination du navigateur : choisir un article lié ne remplit pas l'historique de retour.",
         "Retour : un BackHandler enregistré dans la démo (priorité sur celui de l'hôte) ferme d'abord le panneau secondaire, puis la démo quitte à la racine.",
-        "Honnêteté : nous n'avons pas branché l'animation de retour prédictif des panneaux ; la mise en page vient de la taille de fenêtre, pas de la posture de la charnière.",
+        "iPhone Duo : avec la barre verticale, son Retour (en haut) ferme le panneau secondaire ; la ligne « Retour à l'article » n'apparaît qu'avec la barre du haut.",
+        "Pli : la directive reçoit le pli séparant dans excludedBounds (material3-adaptive ne le voit pas sur iOS), donc article et panneau secondaire se placent de part et d'autre du pli.",
+        "Honnêteté : nous n'avons pas branché l'animation de retour prédictif des panneaux ; hors pli séparant, la mise en page vient de la taille de fenêtre.",
     ),
     content = { SupportingPaneContent() },
 )
@@ -58,10 +63,15 @@ val supportingPaneDemo = Demo(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun SupportingPaneContent() {
-    val navigator = rememberSupportingPaneScaffoldNavigator()
+    // Fold-aware directive: on iOS the library has no hinge, so the panes would ignore the fold.
+    val navigator = rememberSupportingPaneScaffoldNavigator(scaffoldDirective = rememberFoldAwarePaneDirective())
     var articleId by rememberSaveable { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) { scope.launch { navigator.navigateBack() } }
+    // On-screen Back goes through the dispatcher, so it hits the BackHandler above like system back.
+    val systemBack = rememberSystemBack { scope.launch { navigator.navigateBack() } }
+    // Side bar (iPhone Duo vertical bar; never on Android): Back lives at the top of the host bar.
+    val hostHasBack = LocalBarPlacement.current.isSide
 
     val widthDp = currentWidthDp()
     val value = navigator.scaffoldValue
@@ -106,12 +116,12 @@ private fun SupportingPaneContent() {
                 AnimatedPane {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceVariant) {
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                            if (!mainShown) {
+                            if (!mainShown && !hostHasBack) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Start,
                                 ) {
-                                    IconButton(onClick = { scope.launch { navigator.navigateBack() } }) {
+                                    IconButton(onClick = systemBack) {
                                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour à l'article")
                                     }
                                     Text("Retour à l'article", style = MaterialTheme.typography.labelLarge)

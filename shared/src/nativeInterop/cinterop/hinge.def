@@ -1,9 +1,11 @@
 language = Objective-C
 package = dev.showroom.fold.cinterop
 compilerOpts = -fobjc-arc
-headers = SHHingeObserverView.h
-headerFilter = SHHingeObserverView.h
+headers = SHHingeObserverView.h SHVerticalBarObserverView.h
+headerFilter = SHHingeObserverView.h SHVerticalBarObserverView.h
 ---
-// The implementation lives in its own file because the cinterop indexer rejects an @implementation
-// in the definition file itself. Including it here compiles it into the interop library.
+// The implementations live in their own files because the cinterop indexer rejects an
+// @implementation in the definition file itself. Including them here compiles them into the
+// interop library.
 #include "SHHingeObserverView.m"
+#include "SHVerticalBarObserverView.m"

@@ -17,12 +17,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -32,41 +32,47 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * Host of every demo: a top bar (back, title, sharing badge, info sheet). The demo content fills the
- * rest; insets are consumed here. The fold is always the real one (see LocalFoldState).
+ * Host of every demo: back, title, sharing badge and info sheet, in a top bar or a vertical bar
+ * (see [AdaptiveBarScaffold] and [LocalBarPlacement]). A demo adds its own actions and tabs to that
+ * bar with [HostBarItems]. The demo content fills the rest; insets are consumed here. The fold is
+ * always the real one (see LocalFoldState).
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun DemoScreen(demo: Demo, onBack: () -> Unit) {
     var showInfo by rememberSaveable { mutableStateOf(false) }
 
+    val barItems = remember(demo.id) { BarItemsRegistry() }
+
     // Shared back handling: Android system back / predictive back, iOS edge swipe.
     BackHandler(enabled = true, onBack = onBack)
+    // The on-screen Back goes through the same dispatcher, so a demo's own BackHandler wins first.
+    val back = rememberSystemBack(fallback = onBack)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(demo.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        SharingBadge(demo.sharing)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showInfo = true }) {
-                        Icon(Icons.Filled.Info, contentDescription = "Partagé ou spécifique ?")
-                    }
-                },
-            )
+    AdaptiveBarScaffold(
+        title = {
+            Column {
+                Text(demo.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                SharingBadge(demo.sharing)
+            }
         },
+        navigationIcon = {
+            IconButton(onClick = back) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+            }
+        },
+        actions = {
+            IconButton(onClick = { showInfo = true }) {
+                Icon(Icons.Filled.Info, contentDescription = "Partagé ou spécifique ?")
+            }
+            barItems.actions.forEach { BarItemButton(it) }
+        },
+        tabs = barItems.tabs,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            demo.content()
+            CompositionLocalProvider(LocalBarItems provides barItems) {
+                demo.content()
+            }
         }
     }
 

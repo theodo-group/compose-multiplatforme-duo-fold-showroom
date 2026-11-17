@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -120,7 +121,7 @@ internal fun PlatformDemoPage(
             )
             if (wide) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column(Modifier.weight(1.1f), verticalArrangement = Arrangement.spacedBy(12.dp)) { primary() }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) { primary() }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) { secondary() }
                 }
             } else {
@@ -300,7 +301,7 @@ internal fun NoticeBanner(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun OuterDisplayContent(message: String, modifier: Modifier = Modifier) {
     Box(
-        modifier.fillMaxSize().background(Color(0xFF0B2B25)).padding(24.dp),
+        modifier.fillMaxSize().background(Color(0xFF0B2B25)).safeDrawingPadding().padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.widthIn(max = 480.dp)) {

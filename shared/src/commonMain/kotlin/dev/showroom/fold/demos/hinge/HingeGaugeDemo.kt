@@ -53,7 +53,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
+import dev.showroom.fold.core.isSide
 import dev.showroom.fold.fold.FoldSource
 import dev.showroom.fold.fold.FoldState
 import dev.showroom.fold.fold.HingeOrientation
@@ -75,7 +77,7 @@ val hingeGaugeDemo = Demo(
     notes = listOf(
         "Partagé : tout l'écran (schéma animé, mesures, historique, mise en page) est dans commonMain et ne lit que LocalFoldState.",
         "Spécifique : la source du FoldState. Android combine Jetpack WindowManager (FoldingFeature) et le capteur d'angle de charnière ; iOS 27.1 lit UIHingeInteraction et la région réservée « division » via un petit pont Objective-C.",
-        "Les limites de la charnière arrivent en pixels de la fenêtre : il faut les convertir dans le repère de la vue (positionInWindow), sinon tout est décalé de la barre du haut.",
+        "Les limites de la charnière arrivent en pixels de la fenêtre : il faut les convertir dans le repère de la vue (positionInWindow), sinon tout est décalé de la barre de l'app (en haut, ou sur le côté quand elle devient verticale : iPhone Duo fermé ou en paysage).",
         "Pixel Fold et iPhone Duo ont un pli sans couture : la charnière a souvent une épaisseur nulle. Sans capteur d'angle, l'angle affiché est une estimation tirée de la posture.",
         "Posture et orientation viennent toujours de l'appareil (ou de l'émulateur Android / du simulateur iOS) : l'app ne les simule jamais.",
         "Seul cet écran propose deux réglages par-dessus l'état réel : charnière occultante (bande de 28 dp centrée sur le vrai pli) et angle, limité à la plage de l'état actuel (fermé 0–30°, entrouvert 30–150°, à plat 150–180°). Ils ne s'appliquent qu'ici et disparaissent en quittant l'écran.",
@@ -474,7 +476,7 @@ private fun WindowMiniMap(real: FoldState, fold: FoldState, contentInWindow: Rec
         Spacer(Modifier.width(12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Legend(outline, "fenêtre")
-            Legend(contentColor, "cet écran (sous la barre)")
+            Legend(contentColor, if (LocalBarPlacement.current.isSide) "cet écran (à côté de la barre)" else "cet écran (sous la barre)")
             Legend(hingeColor, "charnière réelle")
             if (band != null) Legend(bandColor, "bande occultante (réglage)")
         }

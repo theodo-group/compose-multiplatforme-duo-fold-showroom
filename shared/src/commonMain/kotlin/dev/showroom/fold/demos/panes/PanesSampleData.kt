@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3AdaptiveApi::class)
+
 package dev.showroom.fold.demos.panes
 
 import androidx.compose.foundation.clickable
@@ -8,11 +10,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
+import dev.showroom.fold.fold.FoldState
+import dev.showroom.fold.fold.HingeOrientation
+import dev.showroom.fold.fold.LocalFoldState
 
 /** One fake French article / message, shared by the three pane demos. */
 internal class Article(
@@ -90,3 +100,36 @@ internal fun AdaptationCaption(widthDp: Int, panes: Int, extra: String = "") {
 /** Clickable modifier kept in one place so list rows stay one-liners. */
 internal fun Modifier.clickableItem(onClick: () -> Unit): Modifier =
     this.then(Modifier.clickable(onClick = onClick))
+
+/**
+ * The Material pane directive for the window, made fold-aware from [LocalFoldState].
+ *
+ * material3-adaptive reads the hinge from the platform posture, which is empty on iOS, so on iPhone
+ * Duo its panes ignore the fold. This puts the separating vertical hinge in
+ * [PaneScaffoldDirective.excludedBounds] (window pixels, the space [FoldState.hingeBounds] uses): the
+ * scaffold then places two panes exactly on either side of it, never under it. A window crossed by
+ * such a fold also gets two horizontal partitions, so no single pane straddles the fold.
+ * Pass it to the navigator (`scaffoldDirective = ...`) so its pane values agree with the layout.
+ */
+@Composable
+internal fun rememberFoldAwarePaneDirective(): PaneScaffoldDirective {
+    val base = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
+    val fold = LocalFoldState.current
+    return remember(base, fold) { base.avoidingFold(fold) }
+}
+
+/** The vertical separating hinge, in window pixels, or null when panes may ignore the fold. */
+internal fun FoldState.separatingVerticalHinge() =
+    hingeBounds?.takeIf { isSeparating && orientation == HingeOrientation.Vertical }
+
+/**
+ * Only a vertical hinge is excluded: the scaffold splits its width around excluded bounds, so a
+ * horizontal (tabletop) hinge would be misread as a left/right boundary.
+ */
+internal fun PaneScaffoldDirective.avoidingFold(fold: FoldState): PaneScaffoldDirective {
+    val hinge = fold.separatingVerticalHinge() ?: return this
+    return copy(
+        maxHorizontalPartitions = maxOf(maxHorizontalPartitions, 2),
+        excludedBounds = listOf(hinge),
+    )
+}

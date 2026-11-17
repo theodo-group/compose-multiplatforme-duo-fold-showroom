@@ -22,7 +22,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
@@ -40,6 +39,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.Demo
 import dev.showroom.fold.core.Sharing
+import dev.showroom.fold.core.LocalBarPlacement
+import dev.showroom.fold.core.isSide
+import dev.showroom.fold.core.rememberSystemBack
 
 val listDetailDemo = Demo(
     id = "list-detail",
@@ -49,8 +51,9 @@ val listDetailDemo = Demo(
     notes = listOf(
         "Tout vient de commonMain : ListDetailPaneScaffold et son navigateur (material3-adaptive 1.3.0) tournent à l'identique sur Android et iOS.",
         "Le navigateur garde l'historique des panneaux : en dépliant l'appareil avec un article ouvert, cet article reste affiché à côté de la liste.",
-        "Le nombre de panneaux dépend de la taille de fenêtre (classes de largeur Material), pas de la charnière : aucun code spécifique n'est nécessaire.",
+        "Le nombre de panneaux dépend de la taille de fenêtre (classes de largeur Material). Sur iOS, material3-adaptive ne voit pas la charnière : la démo passe le pli séparant dans excludedBounds de la directive, et les deux panneaux se calent de part et d'autre du pli.",
         "Retour : un BackHandler placé dans la démo (donc enregistré après celui de l'hôte, qui a la priorité) ferme d'abord le détail ; sur iOS le geste de bord déclenche le même handler.",
+        "iPhone Duo : quand les commandes passent dans la barre verticale, le Retour de cette barre (en haut) ferme le détail ; la ligne « Retour à la liste » n'apparaît qu'avec la barre du haut.",
         "Écueil : currentWindowAdaptiveInfo est déprécié en 1.3.0 (V2 utilisé) ; la navigation prédictive animée des panneaux n'est pas branchée ici (BackHandler simple).",
     ),
     content = { ListDetailContent() },
@@ -60,14 +63,17 @@ val listDetailDemo = Demo(
 @Composable
 private fun ListDetailContent() {
     // The content key is the article id; the navigator keeps the pane history across resizes.
-    val navigator = rememberListDetailPaneScaffoldNavigator<Int>()
+    // Fold-aware directive: on iOS the library has no hinge, so the panes would ignore the fold.
+    val navigator = rememberListDetailPaneScaffoldNavigator<Int>(scaffoldDirective = rememberFoldAwarePaneDirective())
     // Pop the detail first: registered after (so above) the host's leave-the-demo handler.
     val scope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) { scope.launch { navigator.navigateBack() } }
+    // On-screen Back goes through the dispatcher, so it hits the BackHandler above like system back.
+    val systemBack = rememberSystemBack { scope.launch { navigator.navigateBack() } }
+    // Side bar (iPhone Duo vertical bar; never on Android): Back lives at the top of the host bar.
+    val hostHasBack = LocalBarPlacement.current.isSide
 
     val widthDp = currentWidthDp()
-    // Make sure adaptive info is read from the window (drives the scaffold directive).
-    currentWindowAdaptiveInfoV2()
     val value = navigator.scaffoldValue
     val listShown = value[ListDetailPaneScaffoldRole.List] == PaneAdaptedValue.Expanded
     val detailShown = value[ListDetailPaneScaffoldRole.Detail] == PaneAdaptedValue.Expanded
@@ -99,8 +105,9 @@ private fun ListDetailContent() {
                     } else {
                         ArticleDetail(
                             article = articleById(selected),
-                            // Visible back affordance only when the list is hidden (single pane).
-                            onBack = if (!listShown) ({ scope.launch { navigator.navigateBack() } }) else null,
+                            // In-content back only when the list is hidden (single pane) and the
+                            // host bar is on top; a side bar already has Back at its top.
+                            onBack = if (!listShown && !hostHasBack) systemBack else null,
                         )
                     }
                 }

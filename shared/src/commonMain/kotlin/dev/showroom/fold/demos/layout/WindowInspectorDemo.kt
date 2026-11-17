@@ -38,8 +38,12 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import dev.showroom.fold.core.BarEdge
+import dev.showroom.fold.core.BarPlacement
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
+import dev.showroom.fold.core.SideBarStyle
 import dev.showroom.fold.fold.LocalFoldState
 import kotlin.math.roundToInt
 
@@ -114,6 +118,12 @@ private fun WindowInspector() {
             Stat("Encoche / cutout", insetText(WindowInsets.displayCutout, density, ld))
             Stat("Clavier (IME)", insetText(WindowInsets.ime, density, ld))
             Stat("Safe drawing", insetText(WindowInsets.safeDrawing, density, ld))
+            Stat("Barre de l'app", barPlacementText(LocalBarPlacement.current))
+            Text(
+                "La barre verticale n'est pas un WindowInsets : sur iPhone Duo elle vient de UITraitCollection.verticalBarEdge (iOS 27); sur Android elle reste toujours en haut (Material 3 : retour et actions dans la barre d'app du haut).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Section("Posture : bibliothèque vs notre source") {
@@ -131,6 +141,21 @@ private fun WindowInspector() {
             Stat("  séparante", if (foldState.isSeparating) "oui" else "non")
             Stat("  angle", foldState.hingeAngleDegrees?.let { "${it.roundToInt()}°" } ?: "n/a")
         }
+    }
+}
+
+private fun barPlacementText(placement: BarPlacement): String = when (placement) {
+    BarPlacement.Top -> "en haut"
+    is BarPlacement.Side -> {
+        val edge = when (placement.edge) {
+            BarEdge.Left -> "latérale gauche"
+            BarEdge.Right -> "latérale droite"
+        }
+        val style = when (placement.style) {
+            SideBarStyle.SystemVerticalBar -> "barre verticale système"
+            SideBarStyle.NavigationRail -> "rail"
+        }
+        "$edge ($style)"
     }
 }
 

@@ -48,10 +48,10 @@ val adaptiveGridDemo = Demo(
     summary = "Une galerie dont le nombre de colonnes et la disposition interne des cartes suivent l'espace disponible.",
     sharing = Sharing.Common,
     notes = listOf(
-        "LazyVerticalGrid + GridCells.Adaptive(minSize) calcule le nombre de colonnes ; l'élément hero prend toute la largeur avec span = GridItemSpan(maxLineSpan).",
+        "LazyVerticalGrid + GridCells.Fixed(n) : n est calculé à partir de la largeur disponible et de la largeur minimale de colonne, puis arrondi au nombre pair inférieur (sauf s'il n'en tient qu'une) pour qu'aucune colonne ne chevauche la charnière (recommandation Apple pour l'iPhone Duo) ; l'élément hero prend toute la largeur avec span = GridItemSpan(maxLineSpan).",
         "Chaque carte utilise BoxWithConstraints : elle choisit vertical ou horizontal selon la largeur que la grille lui donne, pas selon la fenêtre. Un même composant s'adapte donc aussi dans un panneau de fenêtre partagée.",
         "Tout est en commonMain, sans code plateforme ; les « images » sont des dégradés dessinés (aucune ressource).",
-        "Piège : GridCells.Adaptive ne dit pas combien de colonnes il a choisi ; la légende recalcule le nombre à partir de la largeur, c'est une estimation qui suit la même formule.",
+        "Piège : GridCells.Adaptive ne dit pas combien de colonnes il a choisi et peut en produire un nombre impair (3, 5…) dont celle du milieu chevauche le pli. On calcule donc soi-même le nombre de colonnes (BoxWithConstraints) et on le passe à GridCells.Fixed : la légende affiche le nombre exact utilisé par la grille.",
         "Les clés stables (key = id) évitent de perdre la position de défilement quand le nombre de colonnes change au pliage.",
     ),
     content = { AdaptiveGrid() },
@@ -86,7 +86,9 @@ private fun AdaptiveGrid() {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val totalWidth = maxWidth
         val available = totalWidth - GridPadding * 2
-        val columns = max(1, ((available + GridSpacing) / (minColumnDp.dp + GridSpacing)).toInt())
+        val fitting = max(1, ((available + GridSpacing) / (minColumnDp.dp + GridSpacing)).toInt())
+        // Apple (iPhone Duo): prefer an even column count so no column straddles the center fold.
+        val columns = if (fitting > 1 && fitting % 2 == 1) fitting - 1 else fitting
         val columnWidth = (available - GridSpacing * (columns - 1)) / columns
         val horizontal = columnWidth >= HorizontalCardMinWidth
 
@@ -94,7 +96,7 @@ private fun AdaptiveGrid() {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Largeur ${totalWidth.value.toInt()} dp → $columns colonne(s) de ~${columnWidth.value.toInt()} dp → " +
+                        "Largeur ${totalWidth.value.toInt()} dp → $columns colonne(s) de ${columnWidth.value.toInt()} dp → " +
                             if (horizontal) "cartes horizontales (≥ 320 dp)" else "cartes verticales (< 320 dp)",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -111,7 +113,7 @@ private fun AdaptiveGrid() {
                 }
             }
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = minColumnDp.dp),
+                columns = GridCells.Fixed(columns),
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = PaddingValues(GridPadding),
                 horizontalArrangement = Arrangement.spacedBy(GridSpacing),

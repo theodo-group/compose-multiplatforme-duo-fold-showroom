@@ -36,19 +36,27 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
+import dev.showroom.fold.core.BarItem
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.HostBarItems
+import dev.showroom.fold.core.LocalBarPlacement
+import dev.showroom.fold.core.isSide
 import dev.showroom.fold.core.Sharing
 
 val navigationSuiteDemo = Demo(
     id = "nav-suite",
     title = "Navigation adaptative",
-    summary = "NavigationSuiteScaffold choisit seul barre du bas, rail ou tiroir selon la taille de la fenêtre.",
+    summary = "Barre du bas, rail ou onglets dans la barre latérale de l'hôte, selon la fenêtre et la plateforme.",
     sharing = Sharing.Common,
     notes = listOf(
         "NavigationSuiteScaffold (material3-adaptive-navigation-suite) est entièrement dans commonMain : même code sur Android et iOS.",
-        "Le type par défaut vient de calculateFromAdaptiveInfo(currentWindowAdaptiveInfoV2()) : barre en bas en compact, rail en medium et expanded. Seule la taille de fenêtre décide, pas l'appareil.",
-        "Le sélecteur force un type via le paramètre layoutType ; le tiroir permanent n est jamais choisi par le calcul automatique par défaut, seulement via ce sélecteur.",
-        "Rien de spécifique plateforme ici. Le seul point d'attention : sur iOS il n'y a pas de barre d'onglets native UIKit, c'est un rendu Material.",
+        "Règle Apple (iPhone Duo) : sur l'écran extérieur et sur l'écran intérieur en paysage, la barre d'onglets passe dans la barre verticale, côté barre d'état système, comme un groupe séparé sous les actions de la barre d'outils. Jamais en bas, jamais un second rail à gauche.",
+        "Règle Material (Android) : le rail ne contient que les destinations, sur le bord de début (à droite en RTL), à partir de la largeur medium (Pixel Fold déplié, paysage), hors posture table ; barre du bas sinon. Le retour et les actions restent dans la barre d'app du haut : sur Android l'hôte ne passe jamais sur le côté et NavigationSuiteScaffold dessine lui-même son rail.",
+        "Barre du bas : largeur compact, posture table et écran intérieur de l'iPhone Duo en portrait (l'hôte affiche alors une barre en haut).",
+        "En mode Auto, quand LocalBarPlacement est Side, la démo ne dessine pas sa propre navigation : elle confie ses destinations à l'hôte via HostBarItems(tabs = …) et n'affiche que le contenu. L'hôte dessine les onglets dans son rail ou sa barre verticale, un seul rail au bon endroit.",
+        "En mode Auto et barre en haut, le type vient de calculateFromAdaptiveInfo(currentWindowAdaptiveInfoV2()) : barre en bas en compact, rail en medium et expanded.",
+        "Les puces Barre / Rail / Tiroir forcent un type via layoutType : c'est un contournement de démonstration qui s'écarte des guidelines (barre en bas sur l'écran extérieur du Duo, ou second rail à gauche à côté de celui de l'hôte). Le tiroir permanent n'est jamais choisi automatiquement.",
+        "Sur iOS il n'y a pas de barre d'onglets native UIKit ici, c'est un rendu Material.",
     ),
     content = { NavigationSuiteContent() },
 )
@@ -72,6 +80,9 @@ private fun NavigationSuiteContent() {
 
     val adaptive = currentWindowAdaptiveInfoV2()
     val auto = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptive)
+    // Side bar (iPhone Duo vertical bar; never on Android): the host draws the tabs, not this scaffold.
+    val hostSide = LocalBarPlacement.current.isSide
+    val useHostTabs = hostSide && forced == Forced.Auto
     val layoutType = when (forced) {
         Forced.Auto -> auto
         Forced.Bar -> NavigationSuiteType.NavigationBar
@@ -91,14 +102,30 @@ private fun NavigationSuiteContent() {
         NavigationSuiteType.NavigationDrawer -> "tiroir permanent"
         else -> t.toString()
     }
-    val caption = if (forced == Forced.Auto) {
-        "Largeur $widthDp dp → $widthClass → ${typeName(layoutType)} (automatique)"
-    } else {
-        "Largeur $widthDp dp ($widthClass) → ${typeName(layoutType)} (forcé ; auto aurait choisi : ${typeName(auto)})"
+    val hostTabsName = "onglets dans la barre latérale de l'hôte"
+    val autoName = if (hostSide) hostTabsName else typeName(auto)
+    val caption = when {
+        useHostTabs -> "Largeur $widthDp dp → $widthClass → $hostTabsName (automatique)"
+        forced == Forced.Auto -> "Largeur $widthDp dp → $widthClass → ${typeName(layoutType)} (automatique)"
+        else -> "Largeur $widthDp dp ($widthClass) → ${typeName(layoutType)} (forcé, hors guidelines ; auto aurait choisi : $autoName)"
+    }
+
+    if (useHostTabs) {
+        HostBarItems(
+            tabs = Dest.entries.map { dest ->
+                BarItem(
+                    key = dest.name,
+                    icon = dest.icon,
+                    label = dest.label,
+                    selected = dest == selected,
+                    onClick = { selected = dest },
+                )
+            },
+        )
     }
 
     NavigationSuiteScaffold(
-        layoutType = layoutType,
+        layoutType = if (useHostTabs) NavigationSuiteType.None else layoutType,
         navigationSuiteItems = {
             Dest.entries.forEach { dest ->
                 item(
