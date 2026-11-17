@@ -1,0 +1,1310 @@
+<title>Fold Showroom, l'architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Mise en page : colonne de navigation fixe à gauche (bureau), lecture en colonne de ~70 caractères, laboratoires interactifs en pleine largeur de colonne.
+   Palette dérivée du thème de l'app (ShowroomTheme : primaire sarcelle 0B6B5C / 8AD6C3, tertiaire violet). */
+:root {
+  --bg: #F3F7F6;
+  --surface: #FFFFFF;
+  --surface-2: #E6EFEC;
+  --fg: #0F1F1C;
+  --muted: #4D615C;
+  --line: #CFDDD9;
+  --accent: #0B6B5C;
+  --accent-fg: #FFFFFF;
+  --accent-soft: #D3ECE5;
+  --tertiary: #64479E;
+  --tertiary-soft: #ECE4FA;
+  --code-bg: #EAF1EF;
+  --code-fg: #13302A;
+  --tok-kw: #0B6B5C;
+  --tok-str: #8A4B08;
+  --tok-com: #6B7F7A;
+  --tok-ann: #64479E;
+  --ok-bg: #D7F2DD; --ok-fg: #1B5E2B;
+  --warn-bg: #FCE8C3; --warn-fg: #6E4A00;
+  --crit-bg: #FADAD6; --crit-fg: #8C1D13;
+  --hinge: #B03A2E;
+  --font-display: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1412; --surface: #121F1C; --surface-2: #1A2A26; --fg: #E2EEEA; --muted: #9CB1AB; --line: #263B36;
+    --accent: #8AD6C3; --accent-fg: #052B24; --accent-soft: #1B3B34; --tertiary: #C9B6F6; --tertiary-soft: #2B2342;
+    --code-bg: #0F1A18; --code-fg: #D6E7E2; --tok-kw: #8AD6C3; --tok-str: #F2B872; --tok-com: #7D918C; --tok-ann: #C9B6F6;
+    --ok-bg: #173A22; --ok-fg: #A6E5B5; --warn-bg: #3D2F0E; --warn-fg: #F4D18A; --crit-bg: #42201C; --crit-fg: #F7B2A9;
+    --hinge: #F08A7E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B1412; --surface: #121F1C; --surface-2: #1A2A26; --fg: #E2EEEA; --muted: #9CB1AB; --line: #263B36;
+  --accent: #8AD6C3; --accent-fg: #052B24; --accent-soft: #1B3B34; --tertiary: #C9B6F6; --tertiary-soft: #2B2342;
+  --code-bg: #0F1A18; --code-fg: #D6E7E2; --tok-kw: #8AD6C3; --tok-str: #F2B872; --tok-com: #7D918C; --tok-ann: #C9B6F6;
+  --ok-bg: #173A22; --ok-fg: #A6E5B5; --warn-bg: #3D2F0E; --warn-fg: #F4D18A; --crit-bg: #42201C; --crit-fg: #F7B2A9;
+  --hinge: #F08A7E;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 17px; line-height: 1.6;
+}
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--surface-2); padding: 0.08em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; line-height: 1.2; margin: 0; }
+h2 { font-size: 1.85rem; font-weight: 800; letter-spacing: -0.01em; }
+h3 { font-size: 1.2rem; font-weight: 700; }
+p { margin: 0; }
+
+.shell {
+  display: grid; grid-template-columns: 1fr; gap: 0;
+  max-width: 1280px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (min-width: 1000px) { .shell { grid-template-columns: 250px minmax(0, 1fr); gap: 48px; } }
+
+/* Navigation */
+nav.toc { padding-block: 28px 8px; }
+@media (min-width: 1000px) {
+  nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; max-height: 100vh; overflow-y: auto; padding-block: 40px; }
+}
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
+.brand svg { flex: none; }
+.toc ol { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.toc a { display: block; padding: 6px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+.toc a:hover { color: var(--fg); background: var(--surface-2); }
+.toc a.active { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.toc .grp { font-family: var(--font-display); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 14px 10px 4px; }
+@media (max-width: 999px) {
+  .toc ol { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .toc .grp { display: none; }
+  .toc a { border: 1px solid var(--line); font-size: 0.88rem; padding: 4px 10px; }
+}
+
+main { min-width: 0; padding-block: 40px 96px; display: flex; flex-direction: column; gap: 80px; }
+section { display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 24px; min-width: 0; }
+.prose { max-width: 68ch; display: flex; flex-direction: column; gap: 14px; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent); letter-spacing: 0.04em; }
+.lead { font-size: 1.15rem; color: var(--muted); max-width: 64ch; }
+
+/* En-tête */
+.hero { display: grid; gap: 28px; grid-template-columns: 1fr; align-items: center; }
+@media (min-width: 760px) { .hero { grid-template-columns: minmax(0, 1fr) 260px; } }
+.hero h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 800; letter-spacing: -0.02em; }
+.hero h1 span { color: var(--accent); }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 0.95rem; color: var(--muted); }
+.stats b { font-family: var(--font-display); color: var(--fg); font-variant-numeric: tabular-nums; }
+
+/* Badges Sharing */
+.badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.b-common { background: var(--ok-bg); color: var(--ok-fg); }
+.b-ea { background: var(--warn-bg); color: var(--warn-fg); }
+.b-ps { background: var(--crit-bg); color: var(--crit-fg); }
+
+/* Code */
+.code-wrap { position: relative; min-width: 0; }
+.code-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); padding: 8px 14px; background: var(--surface-2); border: 1px solid var(--line); border-bottom: none; border-radius: 10px 10px 0 0; }
+.code-head span { overflow-wrap: anywhere; }
+.copy { font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 6px; padding: 2px 8px; cursor: pointer; flex: none; }
+.copy:hover { border-color: var(--accent); }
+pre.code { margin: 0; overflow-x: auto; background: var(--code-bg); color: var(--code-fg); border: 1px solid var(--line); border-radius: 0 0 10px 10px; padding: 14px 16px; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.55; tab-size: 4; }
+.t-kw { color: var(--tok-kw); font-weight: 600; }
+.t-str { color: var(--tok-str); }
+.t-com { color: var(--tok-com); font-style: italic; }
+.t-ann { color: var(--tok-ann); }
+
+/* Blocs */
+.cols { display: grid; gap: 20px; grid-template-columns: 1fr; }
+@media (min-width: 860px) { .cols.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel h3 { display: flex; align-items: center; gap: 8px; }
+.callout { border-left: 3px solid var(--tertiary); background: var(--tertiary-soft); padding: 14px 18px; border-radius: 0 10px 10px 0; max-width: 72ch; }
+.callout b { font-family: var(--font-display); }
+ul.clean { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; }
+.where { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); overflow-wrap: anywhere; }
+
+/* Laboratoire */
+.lab { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.lab-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.lab-head h3 { font-size: 1.05rem; }
+.lab-head .tag { font-family: var(--font-mono); font-size: 0.74rem; color: var(--tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+.lab-body { display: grid; gap: 24px; padding: 20px; grid-template-columns: 1fr; }
+@media (min-width: 860px) { .lab-body { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); } }
+.controls { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > .lbl { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 0.92rem; padding: 6px 12px; border: none; background: var(--surface); color: var(--fg); cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: none; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.95rem; cursor: pointer; }
+.check input { margin-top: 5px; accent-color: var(--accent); }
+.check small { display: block; color: var(--muted); font-family: var(--font-mono); font-size: 0.74rem; }
+.check.disabled { opacity: 0.45; }
+.result { font-family: var(--font-mono); font-size: 0.86rem; background: var(--code-bg); color: var(--code-fg); border-radius: 8px; padding: 10px 14px; overflow-x: auto; white-space: pre; }
+.note { font-size: 0.92rem; color: var(--muted); }
+.btn { font: inherit; font-weight: 600; font-size: 0.92rem; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Téléphones simulés */
+.stage { display: flex; justify-content: center; align-items: center; min-height: 340px; background: var(--surface-2); border-radius: 12px; padding: 20px; overflow: hidden; }
+.phone { position: relative; border: 3px solid var(--fg); border-radius: 22px; background: var(--surface); overflow: hidden; display: flex; transition: width .25s ease, height .25s ease; max-width: 100%; }
+.phone.portrait-out { width: 170px; height: 300px; }
+.phone.portrait-in { width: 260px; height: 300px; }
+.phone.land-out { width: 300px; height: 170px; }
+.phone.land-in { width: 300px; height: 260px; }
+.sysbar-top { position: absolute; left: 0; right: 0; top: 0; height: 14px; background: var(--surface-2); }
+.sysbar-side { position: absolute; top: 0; bottom: 0; width: 14px; background: var(--surface-2); }
+.p-col { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.p-topbar { margin-top: 14px; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-bottom: 1px solid var(--line); font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; }
+.p-topbar .sp { flex: 1; }
+.p-rail { width: 42px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 30px; background: var(--accent-soft); flex: none; }
+.p-rail.left { margin-left: 14px; }
+.p-rail.right { margin-right: 14px; }
+.p-title { font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; padding: 20px 10px 4px; }
+.p-content { flex: 1; padding: 10px; display: grid; gap: 6px; align-content: start; }
+.p-content i { display: block; height: 10px; border-radius: 4px; background: var(--surface-2); }
+.ico { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 0.7rem; font-weight: 700; background: var(--surface); border: 1px solid var(--line); color: var(--fg); flex: none; }
+.hinge-line { position: absolute; background: var(--hinge); opacity: 0.55; }
+
+/* Arbre de composition */
+.tree { font-family: var(--font-mono); font-size: 0.86rem; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tree button { font: inherit; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; color: var(--fg); width: 100%; overflow-wrap: anywhere; }
+.tree button:hover { border-color: var(--accent); }
+.tree button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--fg); font-weight: 600; }
+.tree .kind { float: right; font-size: 0.7rem; color: var(--muted); font-weight: 400; margin-left: 8px; }
+.detail { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.detail h4 { font-family: var(--font-mono); font-size: 1rem; color: var(--accent); overflow-wrap: anywhere; }
+
+/* Simulateur de navigation */
+.app-sim { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 860px) { .app-sim { grid-template-columns: minmax(0, 1fr) minmax(0, 260px); } }
+.screen { border: 3px solid var(--fg); border-radius: 20px; background: var(--surface); overflow: hidden; display: flex; flex-direction: column; height: 380px; min-width: 0; }
+.screen-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; min-height: 50px; }
+.screen-bar .sp { flex: 1; }
+.screen-bar small { font-family: var(--font-body); font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+.icon-btn { font: inherit; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; display: grid; place-items: center; flex: none; }
+.icon-btn:hover { border-color: var(--accent); }
+.screen-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.cat-grp { display: flex; flex-direction: column; gap: 6px; }
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cat-card { font: inherit; text-align: left; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 0.86rem; }
+.cat-card:hover { border-color: var(--accent); }
+.state-box { display: flex; flex-direction: column; gap: 10px; }
+.kv { font-family: var(--font-mono); font-size: 0.8rem; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; background: var(--code-bg); color: var(--code-fg); padding: 12px; border-radius: 8px; }
+.kv span:nth-child(odd) { color: var(--muted); }
+.kv span { overflow-wrap: anywhere; }
+.sheet { margin-top: auto; border-top: 1px solid var(--line); background: var(--surface-2); padding: 12px 14px; font-size: 0.86rem; display: flex; flex-direction: column; gap: 6px; }
+.flash { animation: flash .6s ease; }
+@keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
+
+/* Décision FoldAwareTwoPane */
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; counter-reset: s; }
+.steps li { counter-increment: s; display: flex; gap: 10px; padding: 6px 10px; border-radius: 8px; font-size: 0.9rem; color: var(--muted); }
+.steps li::before { content: counter(s); font-family: var(--font-mono); font-size: 0.78rem; width: 20px; height: 20px; flex: none; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line); }
+.steps li.passed { color: var(--fg); }
+.steps li.passed::before { content: "✓"; background: var(--ok-bg); color: var(--ok-fg); border-color: transparent; }
+.steps li.stop { background: var(--warn-bg); color: var(--warn-fg); font-weight: 600; }
+.steps li.stop::before { content: "→"; border-color: transparent; }
+.steps li.win { background: var(--ok-bg); color: var(--ok-fg); font-weight: 600; }
+.panes { position: relative; width: 100%; max-width: 360px; aspect-ratio: 4 / 3; border: 3px solid var(--fg); border-radius: 16px; overflow: hidden; background: var(--surface); }
+.pane { position: absolute; display: grid; place-items: center; font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600; transition: all .25s ease; }
+.pane.a { background: var(--accent-soft); color: var(--fg); }
+.pane.b { background: var(--tertiary-soft); color: var(--fg); }
+
+/* Tableaux */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); background: var(--surface-2); }
+tr:last-child td { border-bottom: none; }
+td code { white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: inherit; font-size: 0.88rem; border: 1px solid var(--line); background: var(--surface); color: var(--fg); padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* Patterns */
+.pattern-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.pattern { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.pattern h3 { font-size: 1.02rem; }
+.pattern .cat { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--tertiary); }
+.pattern p { font-size: 0.93rem; }
+
+details.more { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+details.more summary { cursor: pointer; padding: 10px 16px; font-weight: 600; font-family: var(--font-display); font-size: 0.95rem; }
+details.more > div { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+footer { color: var(--muted); font-size: 0.88rem; border-top: 1px solid var(--line); padding-top: 20px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Sommaire">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="2" y="4" width="11" height="20" rx="3" fill="none" stroke="var(--accent)" stroke-width="2"/><rect x="15" y="4" width="11" height="20" rx="3" fill="none" stroke="var(--accent)" stroke-width="2"/><line x1="14" y1="3" x2="14" y2="25" stroke="var(--hinge)" stroke-width="2"/></svg>
+      Fold Showroom
+    </div>
+    <ol id="toc-list">
+      <li class="grp">Vue d'ensemble</li>
+      <li><a href="#apercu">Aperçu</a></li>
+      <li><a href="#demarrage">Démarrage</a></li>
+      <li><a href="#arbre">Arbre de composition</a></li>
+      <li class="grp">Les deux providers</li>
+      <li><a href="#foldstate">ProvideFoldState</a></li>
+      <li><a href="#barplacement">ProvideBarPlacement</a></li>
+      <li class="grp">Écrans et navigation</li>
+      <li><a href="#ecrans">CatalogScreen et DemoScreen</a></li>
+      <li><a href="#scaffold">AdaptiveBarScaffold</a></li>
+      <li><a href="#retour">Le retour arrière</a></li>
+      <li class="grp">Briques réutilisables</li>
+      <li><a href="#twopane">FoldAwareTwoPane</a></li>
+      <li><a href="#plateforme">Code natif et ponts</a></li>
+      <li><a href="#demos">Les 13 démos</a></li>
+      <li class="grp">Synthèse</li>
+      <li><a href="#patterns">Design patterns</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <!-- ============ APERÇU ============ -->
+    <section id="apercu">
+      <div class="hero">
+        <div class="prose">
+          <span class="eyebrow">Kotlin 2.4.21 · Compose Multiplatform 1.12.2 · material3-adaptive 1.3.0</span>
+          <h1>Une seule UI pour <span>deux pliables</span></h1>
+          <p class="lead">Fold Showroom est un catalogue de 13 démos Compose Multiplatform pour l'iPhone Duo et le Pixel 9 Pro Fold. Cette page explique comment l'app est construite : les composants, les APIs internes, et les patterns qui permettent de garder 74 % du code dans <code>commonMain</code>.</p>
+          <div class="stats">
+            <span><b>4 347</b> lignes partagées (74 %)</span>
+            <span><b>532</b> lignes Android (9 %)</span>
+            <span><b>958</b> lignes iOS (16 %)</span>
+          </div>
+        </div>
+        <svg viewBox="0 0 260 200" role="img" aria-label="Schéma : une UI commune alimentée par deux sources de pliure, Android et iOS">
+          <rect x="70" y="10" width="120" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="130" y="30" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="13" fill="var(--fg)">UI commune</text>
+          <text x="130" y="46" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--muted)">commonMain</text>
+          <rect x="60" y="82" width="140" height="36" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="130" y="104" text-anchor="middle" font-family="var(--font-mono)" font-size="10.5" fill="var(--fg)">LocalFoldState</text>
+          <line x1="130" y1="82" x2="130" y2="54" stroke="var(--muted)" stroke-width="1.5"/>
+          <rect x="6" y="148" width="112" height="42" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="62" y="166" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="12" fill="var(--fg)">Android</text>
+          <text x="62" y="181" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">FoldingFeature</text>
+          <rect x="142" y="148" width="112" height="42" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="198" y="166" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="12" fill="var(--fg)">iOS</text>
+          <text x="198" y="181" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">UIHingeInteraction</text>
+          <line x1="62" y1="148" x2="110" y2="118" stroke="var(--muted)" stroke-width="1.5"/>
+          <line x1="198" y1="148" x2="150" y2="118" stroke="var(--muted)" stroke-width="1.5"/>
+          <text x="130" y="140" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="var(--tertiary)">expect / actual</text>
+        </svg>
+      </div>
+
+      <div class="cols two">
+        <div class="panel">
+          <h3>Ce que l'app cherche à prouver</h3>
+          <ul class="clean">
+            <li>Tout ce qui dépend de la <b>taille de la fenêtre</b> s'écrit une fois, en commun : 7 démos sur 13 n'ont aucune ligne native.</li>
+            <li>Ce qui dépend du <b>pli physique</b> demande une petite source native, écrite une seule fois et exposée par <code>ProvideFoldState</code>.</li>
+            <li>Ce qui dépend d'une <b>API propre à un OS</b> (écran extérieur, multi-fenêtre) demande du vrai code natif, isolé derrière une interface commune.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Organisation des sources</h3>
+          <ul class="clean">
+            <li><code>core/</code> : le squelette de l'app (catalogue, hôte des démos, barres, thème, retour).</li>
+            <li><code>fold/</code> : le modèle <code>FoldState</code> et sa source par plateforme.</li>
+            <li><code>demos/{layout, panes, hinge, platform}/</code> : une démo par fichier.</li>
+            <li><code>nativeInterop/cinterop/</code> : deux ponts Objective-C pour les API iOS 27.1.</li>
+            <li><code>iosApp/</code> : l'hôte SwiftUI et l'accessoire d'écran extérieur.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DÉMARRAGE ============ -->
+    <section id="demarrage">
+      <span class="eyebrow">01 · Points d'entrée</span>
+      <h2>Du lancement natif à <code>App()</code></h2>
+      <div class="prose">
+        <p>Chaque plateforme fait le minimum : créer une surface Compose et appeler <code>App()</code>. Il n'y a ni ViewModel, ni navigation native, ni injection de dépendances. Toute la logique commence dans le code commun.</p>
+      </div>
+      <div class="cols two">
+        <div class="panel">
+          <h3>Android</h3>
+          <p class="where">androidApp/…/MainActivity.kt</p>
+          <div data-code="mainActivity"></div>
+          <p class="note"><code>enableEdgeToEdge()</code> est appelé avant <code>super.onCreate</code> : Compose gère lui-même les insets. Le manifeste déclare <code>configChanges</code>, si bien que l'activité n'est pas recréée au pli, au dépli ni à la rotation.</p>
+        </div>
+        <div class="panel">
+          <h3>iOS</h3>
+          <p class="where">iosApp/iOSApp.swift → ContentView.swift → MainViewController.kt</p>
+          <div data-code="iosEntry"></div>
+          <p class="note">Swift enregistre d'abord le pont d'écran extérieur (<code>OuterDisplayModel.shared.register()</code>), puis chaque scène affiche un <code>ComposeUIViewController</code> qui exécute son propre <code>App()</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ARBRE ============ -->
+    <section id="arbre">
+      <span class="eyebrow">02 · App.kt</span>
+      <h2>L'arbre de composition</h2>
+      <div class="prose">
+        <p><code>App()</code> empile trois providers, puis choisit l'écran. L'ordre compte : le thème englobe tout, l'état de pliure est disponible pour tous les écrans, et le placement des barres est lu par le scaffold de chaque écran. Cliquez sur un nœud pour voir son rôle.</p>
+      </div>
+      <div class="lab">
+        <div class="lab-head"><h3>Explorer l'arbre</h3><span class="tag">interactif</span></div>
+        <div class="lab-body">
+          <div class="tree" id="tree" role="group" aria-label="Nœuds de l'arbre de composition"></div>
+          <div class="detail" id="tree-detail" aria-live="polite"></div>
+        </div>
+      </div>
+      <details class="more">
+        <summary>Voir App.kt en entier</summary>
+        <div><div data-code="app"></div></div>
+      </details>
+    </section>
+
+    <!-- ============ FOLD STATE ============ -->
+    <section id="foldstate">
+      <span class="eyebrow">03 · fold/FoldState.kt</span>
+      <h2>ProvideFoldState</h2>
+      <div class="prose">
+        <p class="lead">Une seule source de vérité pour la charnière, lue partout via <code>LocalFoldState.current</code>.</p>
+        <p>material3-adaptive lit la posture depuis Jetpack WindowManager. Sur Android, c'est correct. Sur iOS, cette posture reste toujours « à plat » : la bibliothèque ne voit pas la charnière de l'iPhone Duo. Le projet définit donc son propre modèle <code>FoldState</code>, neutre vis-à-vis de la plateforme, et une source <code>expect/actual</code> pour le remplir.</p>
+      </div>
+
+      <div class="cols two">
+        <div class="panel">
+          <h3>Le modèle</h3>
+          <div data-code="foldModel"></div>
+          <p class="note">Il n'y a pas de champ « occultant ». Une charnière occultante se traduit par un <code>hingeBounds</code> d'épaisseur non nulle et <code>isSeparating = true</code>. Sur l'iPhone Duo et le Pixel Fold, le pli est sans couture : l'épaisseur est souvent nulle.</p>
+        </div>
+        <div class="panel">
+          <h3>Le provider</h3>
+          <div data-code="provideFold"></div>
+          <ul class="clean">
+            <li><code>compositionLocalOf</code> dynamique : seuls les composables qui lisent la valeur se recomposent quand la charnière bouge.</li>
+            <li>Valeur par défaut <code>FoldState.None</code> (null object) : un composable prévisualisé ou testé hors de <code>App()</code> fonctionne sans pliure.</li>
+            <li>Appelé une seule fois, dans <code>App.kt:20</code>. Les démos lisent le local, jamais <code>rememberPlatformFoldState()</code> directement.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Deux sources, un contrat</h3>
+      <div class="row" role="tablist" aria-label="Plateforme" id="fold-tabs">
+        <div class="seg">
+          <button type="button" role="tab" aria-pressed="true" data-tab="android">Android</button>
+          <button type="button" role="tab" aria-pressed="false" data-tab="ios">iOS</button>
+          <button type="button" role="tab" aria-pressed="false" data-tab="objc">Pont Objective-C</button>
+        </div>
+      </div>
+      <div class="cols two" id="fold-tab-android">
+        <div data-code="foldAndroid"></div>
+        <div class="prose">
+          <p><b>Jetpack WindowManager</b> fournit la <code>FoldingFeature</code> (position, orientation, état). Un <b>capteur</b> <code>TYPE_HINGE_ANGLE</code> (API 30+) fournit l'angle.</p>
+          <ul class="clean">
+            <li>La collecte est liée à la composition (<code>LaunchedEffect</code>, <code>DisposableEffect</code>), pas au Lifecycle.</li>
+            <li><code>foldStateOf()</code> traduit les types Android vers le modèle commun : <code>HALF_OPENED</code> + vertical donne <code>Book</code>, <code>HALF_OPENED</code> horizontal donne <code>Tabletop</code>.</li>
+            <li>Sans <code>FoldingFeature</code> mais avec le capteur (pliable utilisé sur son écran externe), <code>hasHinge = true</code> et la posture vaut <code>Closed</code> sous 30°.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="cols two" id="fold-tab-ios" hidden>
+        <div data-code="foldIos"></div>
+        <div class="prose">
+          <p>Une <code>UIView</code> invisible, <code>SHHingeObserverView</code>, est insérée au fond de la vue hôte Compose. Son callback écrit directement dans un <code>MutableState</code>, ce qui recompose les lecteurs.</p>
+          <ul class="clean">
+            <li><code>toFoldState(density)</code> convertit les points UIKit en pixels Compose et les radians en degrés.</li>
+            <li><code>hingeStatus</code> 2 (entrouvert) donne <code>Tabletop</code> si le pli est horizontal, <code>Book</code> sinon.</li>
+            <li><code>onDispose</code> appelle <code>detach()</code>, qui casse le cycle de références entre Kotlin et Objective-C.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="cols two" id="fold-tab-objc" hidden>
+        <div data-code="objc"></div>
+        <div class="prose">
+          <p>Les bindings Kotlin/Native 2.4.21 sont générés depuis le SDK iOS 26.4 : <code>UIHingeInteraction</code> (iOS 27.1) n'y existe pas. Le pont l'atteint <b>par le runtime Objective-C</b>.</p>
+          <ul class="clean">
+            <li>Classes résolues par <code>NSClassFromString</code>, chaque appel protégé par <code>respondsToSelector:</code>. Le code compile avec un SDK ancien et reste inerte sur un système ancien.</li>
+            <li>La région « division » peut arriver après la charnière : le pont relit jusqu'à 10 fois toutes les 100 ms, avec un compteur de génération contre les courses.</li>
+            <li>Le <code>.m</code> est inclus après <code>---</code> dans <code>hinge.def</code>, car l'indexeur cinterop refuse un <code>@implementation</code> dans le fichier de définition.</li>
+            <li>Adapté de Crease (MIT), voir <code>THIRD_PARTY_NOTICES.md</code>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">
+        <b>Re-fournir le local pour simuler.</b> L'écran « Jauge de charnière » lit l'état réel, lui applique des réglages (charnière occultante, angle) avec <code>withTweaks()</code>, puis re-fournit <code>LocalFoldState</code> à son seul sous-arbre. <code>FoldAwareTwoPane</code> et tout le contenu de l'écran voient l'état simulé ; le reste de l'app garde l'état réel.
+      </div>
+      <details class="more">
+        <summary>Voir la surcharge locale dans HingeGaugeDemo</summary>
+        <div><div data-code="tweaks"></div></div>
+      </details>
+    </section>
+
+    <!-- ============ BAR PLACEMENT ============ -->
+    <section id="barplacement">
+      <span class="eyebrow">04 · core/BarPlacement.kt</span>
+      <h2>ProvideBarPlacement</h2>
+      <div class="prose">
+        <p class="lead">Où dessiner Back, les actions et les onglets : en haut, ou dans une barre verticale sur le côté.</p>
+        <p>Les deux plateformes n'ont pas la même règle. <b>Material 3</b> garde Back et les actions dans la top app bar à toutes les tailles ; seules les destinations de premier niveau passent dans un rail. Les <b>guidelines iPhone Duo</b> placent Back, les actions et les onglets dans une barre verticale, du côté de la barre système, sur l'écran externe et sur l'écran interne en paysage. <code>ProvideBarPlacement</code> expose cette décision à toute l'UI, pour qu'aucun écran n'ait à la refaire.</p>
+      </div>
+      <div class="cols two">
+        <div class="panel">
+          <h3>Le type et le provider</h3>
+          <div data-code="barPlacement"></div>
+        </div>
+        <div class="panel">
+          <h3>Les deux actuals</h3>
+          <div data-code="barActuals"></div>
+          <p class="note">Sur iOS, <code>SHVerticalBarObserverView</code> lit le trait <code>UITraitCollection.verticalBarEdge</code> (iOS 27.1) et s'abonne à ses changements. Il convertit leading/trailing en bord physique selon le sens d'écriture, et calcule <code>itemsTop</code> pour démarrer les contrôles sous la barre d'état verticale.</p>
+        </div>
+      </div>
+
+      <div class="lab">
+        <div class="lab-head"><h3>Simulateur de placement</h3><span class="tag">règles reproduites</span></div>
+        <div class="lab-body">
+          <div class="controls">
+            <div class="field"><span class="lbl">Plateforme</span>
+              <div class="seg" data-group="bp-platform"><button type="button" data-v="android" aria-pressed="false">Android</button><button type="button" data-v="ios" aria-pressed="true">iOS (iPhone Duo)</button></div></div>
+            <div class="field"><span class="lbl">Écran</span>
+              <div class="seg" data-group="bp-screen"><button type="button" data-v="out" aria-pressed="true">Externe</button><button type="button" data-v="in" aria-pressed="false">Interne (déplié)</button></div></div>
+            <div class="field"><span class="lbl">Orientation</span>
+              <div class="seg" data-group="bp-orient"><button type="button" data-v="portrait" aria-pressed="true">Portrait</button><button type="button" data-v="land" aria-pressed="false">Paysage</button></div></div>
+            <div class="field" id="bp-edge-field"><span class="lbl">Bord de la barre système</span>
+              <div class="seg" data-group="bp-edge"><button type="button" data-v="Left" aria-pressed="true">Gauche</button><button type="button" data-v="Right" aria-pressed="false">Droite</button></div></div>
+            <div class="result" id="bp-result" aria-live="polite"></div>
+            <p class="note" id="bp-note"></p>
+          </div>
+          <div class="stage"><div class="phone" id="bp-phone"></div></div>
+        </div>
+      </div>
+      <p class="note">Le simulateur reproduit les règles des guidelines. Dans l'app, la valeur n'est jamais calculée : elle est lue sur le système (trait iOS), donc toujours alignée sur ce qu'affiche l'OS.</p>
+
+      <h3>Qui lit <code>LocalBarPlacement</code></h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Lecteur</th><th>Ce qu'il en fait</th></tr></thead>
+        <tbody>
+          <tr><td><code>AdaptiveBarScaffold</code></td><td>Choisit entre <code>TopAppBar</code> et <code>SideBarLayout</code> (voir plus bas).</td></tr>
+          <tr><td><code>NavigationSuiteDemo</code></td><td>En mode Auto avec barre latérale, passe <code>NavigationSuiteType.None</code> et confie ses onglets à l'hôte via <code>HostBarItems</code>.</td></tr>
+          <tr><td><code>ListDetailDemo</code>, <code>SupportingPaneDemo</code>, <code>Nav3SceneDemo</code></td><td><code>hostHasBack</code> : n'affichent pas leur propre ligne « Retour » si l'hôte en dessine déjà un dans la barre latérale.</td></tr>
+          <tr><td><code>BookModeDemo</code></td><td>Déplace les boutons page précédente / suivante dans la barre latérale.</td></tr>
+          <tr><td><code>WindowInspectorDemo</code>, <code>HingeGaugeDemo</code></td><td>Affichent la valeur courante.</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="callout">
+        <b>Historique.</b> La première version (commit <code>7ec9b3e</code>) avait aussi un style <code>NavigationRail</code> produit par Android en largeur moyenne. Le commit <code>130f546</code> l'a retiré : aucune plateforme ne le produisait plus. <code>Side</code> désigne désormais uniquement la barre verticale de l'iPhone Duo, et l'actual Android renvoie une constante <code>Top</code>.
+      </div>
+    </section>
+
+    <!-- ============ ÉCRANS ============ -->
+    <section id="ecrans">
+      <span class="eyebrow">05 · core/CatalogScreen.kt · core/DemoScreen.kt</span>
+      <h2>Pourquoi un CatalogScreen et un DemoScreen</h2>
+      <div class="prose">
+        <p class="lead">Le catalogue choisit une démo. L'hôte l'habille. La démo ne fait que remplir l'espace.</p>
+        <p>Une démo est une simple valeur <code>Demo</code> dont le champ <code>content</code> est un slot composable. Tout ce qui est commun aux 13 démos (titre, badge, Back, bouton ⓘ, consommation des insets, gestion du retour, barre adaptative) vit une seule fois dans <code>DemoScreen</code>. Sans cette séparation, chaque démo devrait réimplémenter son chrome, et la moindre règle de barre iPhone Duo serait à corriger 13 fois.</p>
+      </div>
+
+      <div class="cols two">
+        <div class="panel">
+          <h3>CatalogScreen <span class="where">l'écran racine</span></h3>
+          <ul class="clean">
+            <li>Signature : <code>CatalogScreen(demos, gridState, onOpen)</code>. Aucun état propre.</li>
+            <li><code>LazyVerticalGrid(GridCells.Adaptive(280.dp))</code>, groupée par niveau <code>Sharing</code>, avec un en-tête pleine largeur par groupe.</li>
+            <li>Le sous-titre <code>liveWindowSummary()</code> (« 673 × 841 dp · posture à plat ») prouve que l'UI commune voit la vraie fenêtre et la vraie pliure.</li>
+            <li>Pas de Back, pas d'actions : c'est la racine.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>DemoScreen <span class="where">l'hôte générique</span></h3>
+          <ul class="clean">
+            <li>Signature : <code>DemoScreen(demo, onBack)</code>.</li>
+            <li>Titre + <code>SharingBadge</code>, Back, bouton ⓘ qui ouvre un <code>ModalBottomSheet</code> avec <code>demo.notes</code>.</li>
+            <li>Crée un <code>BarItemsRegistry</code> par démo (<code>remember(demo.id)</code>) et l'expose par <code>LocalBarItems</code>.</li>
+            <li>Applique <code>padding</code> puis <code>consumeWindowInsets</code> : la démo reçoit un espace déjà débarrassé des barres.</li>
+            <li>Enregistre le <code>NavigationBackHandler</code> qui ramène au catalogue.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="lab">
+        <div class="lab-head"><h3>Simulateur de navigation d'App()</h3><span class="tag">état réel reproduit</span></div>
+        <div class="lab-body" style="grid-template-columns: 1fr;">
+          <div class="app-sim">
+            <div class="screen" id="sim-screen"></div>
+            <div class="state-box">
+              <div class="kv" id="sim-state"></div>
+              <div class="row">
+                <button type="button" class="btn ghost" id="sim-rotate">Pivoter / plier</button>
+                <button type="button" class="btn ghost" id="sim-back" disabled>Retour système</button>
+              </div>
+              <p class="note" id="sim-log" aria-live="polite">Ouvrez une démo dans le catalogue.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cols two">
+        <div class="prose">
+          <h3>Navigation par état, sans back stack</h3>
+          <p>L'app n'a que deux niveaux. Un seul <code>String?</code> suffit : <code>null</code> affiche le catalogue, un identifiant affiche la démo correspondante. Il est en <code>rememberSaveable</code>, donc il survit à la rotation et à une recréation d'activité. Un identifiant inconnu ramène au catalogue.</p>
+          <p><code>catalogGridState</code> est remonté au-dessus du <code>if</code> : quand on revient d'une démo, la grille retrouve sa position de défilement. Navigation 3 n'est utilisée que dans la démo qui la présente, pas pour l'app elle-même.</p>
+        </div>
+        <div data-code="demoModel"></div>
+      </div>
+    </section>
+
+    <!-- ============ SCAFFOLD ============ -->
+    <section id="scaffold">
+      <span class="eyebrow">06 · core/AdaptiveBarScaffold.kt · core/BarItems.kt</span>
+      <h2>AdaptiveBarScaffold et HostBarItems</h2>
+      <div class="prose">
+        <p><code>AdaptiveBarScaffold</code> a la même forme qu'un <code>Scaffold</code> Material (des slots <code>title</code>, <code>navigationIcon</code>, <code>actions</code>, <code>content</code>), plus une liste <code>tabs</code>. Il lit <code>LocalBarPlacement</code> et choisit son rendu dans un <code>when</code> exhaustif sur le type scellé.</p>
+      </div>
+      <div class="cols two">
+        <div data-code="scaffold"></div>
+        <div class="prose">
+          <h3>En mode <code>Side</code></h3>
+          <ul class="clean">
+            <li>Un <code>NavigationRail</code> du côté de <code>placement.edge</code>, d'au moins 64 dp, avec Back puis les actions en tête et les onglets en dessous.</li>
+            <li>Le rail démarre à <code>max(top, itemsTop)</code>, sous la barre d'état verticale.</li>
+            <li>Le rail est dessiné même vide : la bande est réservée par le système.</li>
+            <li>Le titre devient un en-tête compact en haut du contenu.</li>
+            <li>En mode <code>Top</code>, les <code>tabs</code> sont ignorés : l'écran dessine sa propre barre d'onglets.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Faire remonter des boutons de la démo vers l'hôte</h3>
+      <div class="cols two">
+        <div class="prose">
+          <p>Une démo veut parfois mettre ses propres boutons dans la barre de l'hôte (onglets de la navigation adaptative, pages du mode livre). Or c'est l'hôte qui dessine la barre. <code>HostBarItems</code> inverse le flux : la démo <b>déclare</b> ses items, l'hôte les <b>lit</b> dans un registre.</p>
+          <ul class="clean">
+            <li><code>SideEffect</code> écrit les items à chaque composition réussie : le dernier appel gagne.</li>
+            <li><code>DisposableEffect</code> les retire quand l'appel quitte la composition.</li>
+            <li>Un jeton propriétaire (<code>remember { Any() }</code>) garantit qu'un appelant n'efface que ce qu'il a posé.</li>
+            <li>Hors d'un <code>DemoScreen</code>, <code>LocalBarItems</code> vaut <code>null</code> et l'appel ne fait rien.</li>
+          </ul>
+        </div>
+        <div data-code="hostBarItems"></div>
+      </div>
+    </section>
+
+    <!-- ============ RETOUR ============ -->
+    <section id="retour">
+      <span class="eyebrow">07 · core/SystemBack.kt</span>
+      <h2>Le retour arrière, un seul dispatcher</h2>
+      <div class="prose">
+        <p>Il y a trois façons de revenir en arrière : le bouton Back à l'écran, le retour système Android (y compris prédictif) et le geste de bord iOS. Elles passent toutes par le même <code>NavigationEventDispatcher</code> de <code>androidx.navigationevent</code>. Le handler le plus interne passe en premier : dans la démo Liste / détail, Back ferme d'abord le détail, et seulement ensuite la démo.</p>
+        <p><code>rememberSystemBack()</code> fabrique un callback pour le bouton à l'écran. Au lieu d'appeler directement <code>onBack</code>, il injecte un événement dans le dispatcher via une <code>DirectNavigationEventInput</code>. Le commit <code>130f546</code> a remplacé le <code>BackHandler</code> déprécié par <code>NavigationBackHandler</code>, et corrigé un bug où le retour quittait la démo Navigation 3 au lieu de dépiler une entrée.</p>
+      </div>
+      <div class="cols two">
+        <div data-code="systemBack"></div>
+        <svg viewBox="0 0 340 230" role="img" aria-label="Chaîne de responsabilité : trois entrées de retour vont vers un dispatcher, qui consulte le handler de la démo avant celui de l'hôte">
+          <g font-family="var(--font-mono)" font-size="10">
+            <rect x="4" y="10" width="104" height="30" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="56" y="29" text-anchor="middle" fill="var(--fg)">Bouton Back</text>
+            <rect x="4" y="50" width="104" height="30" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="56" y="69" text-anchor="middle" fill="var(--fg)">Retour Android</text>
+            <rect x="4" y="90" width="104" height="30" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="56" y="109" text-anchor="middle" fill="var(--fg)">Geste de bord iOS</text>
+            <rect x="140" y="40" width="110" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="195" y="62" text-anchor="middle" fill="var(--fg)" font-weight="600">Dispatcher</text>
+            <text x="195" y="77" text-anchor="middle" fill="var(--muted)">navigationevent</text>
+            <line x1="108" y1="25" x2="140" y2="55" stroke="var(--muted)"/><line x1="108" y1="65" x2="140" y2="65" stroke="var(--muted)"/><line x1="108" y1="105" x2="140" y2="75" stroke="var(--muted)"/>
+            <rect x="120" y="140" width="210" height="32" rx="6" fill="var(--surface)" stroke="var(--tertiary)"/>
+            <text x="225" y="160" text-anchor="middle" fill="var(--fg)">1. handler de la démo (si actif)</text>
+            <rect x="120" y="186" width="210" height="32" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="225" y="206" text-anchor="middle" fill="var(--fg)">2. DemoScreen → onBack()</text>
+            <line x1="195" y1="90" x2="195" y2="140" stroke="var(--muted)"/>
+            <line x1="225" y1="172" x2="225" y2="186" stroke="var(--muted)" stroke-dasharray="3 3"/>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <!-- ============ TWO PANE ============ -->
+    <section id="twopane">
+      <span class="eyebrow">08 · demos/hinge/FoldAwareTwoPane.kt</span>
+      <h2>FoldAwareTwoPane</h2>
+      <div class="prose">
+        <p>Le composant central des démos « charnière ». Il lit <code>LocalFoldState</code>, mesure sa propre position dans la fenêtre, convertit le pli dans son repère local (<code>hingeIn()</code>), puis choisit un <code>TwoPaneMode</code> et une <code>TwoPaneReason</code> qui explique ce choix. Rien n'est placé sous le pli.</p>
+      </div>
+      <div data-code="twoPaneSig"></div>
+
+      <div class="lab">
+        <div class="lab-head"><h3>Rejouer <code>arrange()</code></h3><span class="tag">arbre de décision</span></div>
+        <div class="lab-body">
+          <div class="controls" id="tp-controls">
+            <label class="check"><input type="checkbox" id="tp-bounds" checked> <span>Le pli traverse la fenêtre<small>hingeBounds != null</small></span></label>
+            <label class="check"><input type="checkbox" id="tp-inside" checked> <span>Le pli coupe ce composant<small>hingeIn(layout) != null</small></span></label>
+            <label class="check"><input type="checkbox" id="tp-sep" checked> <span>Le pli sépare le contenu<small>isSeparating</small></span></label>
+            <label class="check"><input type="checkbox" id="tp-full" checked> <span>Il traverse tout le composant<small>crossesFully (tolérance 2 px)</small></span></label>
+            <label class="check"><input type="checkbox" id="tp-size" checked> <span>Chaque côté fait au moins 120 dp<small>MIN_PANE_SIZE</small></span></label>
+            <div class="field"><span class="lbl">Orientation du pli</span>
+              <div class="seg" data-group="tp-orient"><button type="button" data-v="v" aria-pressed="true">Vertical (livre)</button><button type="button" data-v="h" aria-pressed="false">Horizontal (chevalet)</button></div></div>
+            <div class="field"><span class="lbl">Largeur du composant</span>
+              <div class="seg" data-group="tp-wide"><button type="button" data-v="0" aria-pressed="false">&lt; 600 dp</button><button type="button" data-v="1" aria-pressed="true">≥ 600 dp</button></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
+            <ol class="steps" id="tp-steps"></ol>
+            <div class="result" id="tp-result" aria-live="polite"></div>
+            <div class="panes" id="tp-panes" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cols two">
+        <div class="panel">
+          <h3>Qui l'utilise</h3>
+          <ul class="clean">
+            <li><b>Mode livre</b> : une page de chaque côté d'un pli vertical. Une double page commence toujours sur une page paire.</li>
+            <li><b>Mode chevalet</b> : la vidéo au-dessus d'un pli horizontal, les commandes en dessous.</li>
+            <li><b>Jauge de charnière</b> : affiche le mode et la raison en direct.</li>
+            <li><b>Navigation 3</b> : la scène à deux panneaux rend ses entrées avec ce composant.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Avec material3-adaptive</h3>
+          <p>Les démos de panneaux gardent les scaffolds de la bibliothèque, mais leur injectent le pli : <code>rememberFoldAwarePaneDirective()</code> met la charnière dans <code>excludedBounds</code> et force au moins deux partitions horizontales.</p>
+          <div data-code="avoidingFold"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PLATEFORME ============ -->
+    <section id="plateforme">
+      <span class="eyebrow">09 · demos/platform · iosApp</span>
+      <h2>Code natif : trois manières de l'isoler</h2>
+      <div class="prose">
+        <p>Le code natif ne remonte jamais dans l'UI. Selon la taille du besoin, le projet utilise l'une de ces trois techniques.</p>
+      </div>
+      <div class="cols two">
+        <div class="panel">
+          <h3><span class="badge b-ea">expect/actual fin</span></h3>
+          <p>Quand seule une donnée change. Le glisser-déposer garde ses modificateurs Compose communs et ne délègue que la charge utile : ≈ 35 lignes Android (<code>ClipData</code>), ≈ 70 lignes iOS (<code>NSItemProvider</code>), aucune ligne Swift.</p>
+          <div data-code="dragDrop"></div>
+        </div>
+        <div class="panel">
+          <h3><span class="badge b-ps">Interface CapabilityController</span></h3>
+          <p>Quand le comportement entier change. <code>PlatformKit</code> définit un contrat commun et des composables de présentation. Chaque plateforme fournit un contrôleur adossé à de l'état Compose. L'UI ne connaît que l'interface.</p>
+          <div data-code="capability"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Pont Swift → Kotlin pour l'écran extérieur iOS</h3>
+        <p><code>CameraCaptureAccessory</code> n'existe qu'en Swift et n'est pas dans les bindings Kotlin. Le projet inverse la dépendance : Kotlin déclare une interface, Swift l'implémente et s'enregistre au démarrage.</p>
+        <div class="cols two">
+          <div data-code="outerKotlin"></div>
+          <div data-code="outerSwift"></div>
+        </div>
+        <p class="note">Si aucun hôte n'est enregistré, la capacité s'affiche « non prise en charge » avec la raison. Le contenu de l'écran extérieur est le même composable <code>OuterDisplayContent</code> que sur Android.</p>
+      </div>
+    </section>
+
+    <!-- ============ DÉMOS ============ -->
+    <section id="demos">
+      <span class="eyebrow">10 · core/DemoCatalog.kt</span>
+      <h2>Les 13 démos</h2>
+      <div class="prose"><p>Chaque démo déclare son niveau de partage. C'est ce badge que le catalogue utilise pour les grouper.</p></div>
+      <div class="chips" id="demo-filter" role="group" aria-label="Filtrer par niveau de partage">
+        <button type="button" class="chip" data-f="all" aria-pressed="true">Toutes (13)</button>
+        <button type="button" class="chip" data-f="common" aria-pressed="false">100 % partagé (7)</button>
+        <button type="button" class="chip" data-f="ea" aria-pressed="false">Partagé + expect/actual (4)</button>
+        <button type="button" class="chip" data-f="ps" aria-pressed="false">Spécifique plateforme (2)</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Démo</th><th>Niveau</th><th>APIs clés</th><th>Natif</th></tr></thead>
+        <tbody id="demo-rows"></tbody>
+      </table></div>
+    </section>
+
+    <!-- ============ PATTERNS ============ -->
+    <section id="patterns">
+      <span class="eyebrow">11 · Synthèse</span>
+      <h2>Les design patterns utilisés</h2>
+      <div class="chips" id="pattern-filter" role="group" aria-label="Filtrer par famille">
+        <button type="button" class="chip" data-f="all" aria-pressed="true">Tous</button>
+        <button type="button" class="chip" data-f="compose" aria-pressed="false">Compose</button>
+        <button type="button" class="chip" data-f="multiplateforme" aria-pressed="false">Multiplateforme</button>
+        <button type="button" class="chip" data-f="comportement" aria-pressed="false">Comportement</button>
+      </div>
+      <div class="pattern-grid" id="pattern-grid"></div>
+    </section>
+
+    <footer>
+      Documentation générée à partir du code de la branche <code>main</code> (commit <code>daf28a1</code>). Les chemins sont relatifs à <code>shared/src/commonMain/kotlin/dev/showroom/fold/</code> sauf mention contraire.
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  // ---------- Extraits de code ----------
+  var CODE = {
+    mainActivity: { f: "MainActivity.kt", c: String.raw`class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+        setContent { App() }
+    }
+}` },
+    iosEntry: { f: "iOSApp.swift · MainViewController.kt", c: String.raw`// Swift
+@main struct iOSApp: App {
+    init() { OuterDisplayModel.shared.register() }
+    var body: some Scene {
+        WindowGroup { ContentView() }   // une scène = un App()
+    }
+}
+
+// Kotlin (iosMain)
+fun MainViewController(): UIViewController =
+    ComposeUIViewController { App() }` },
+    app: { f: "App.kt", c: String.raw`@Composable
+fun App() {
+    ShowroomTheme {
+        ProvideFoldState {
+            ProvideBarPlacement {
+                var currentId by rememberSaveable { mutableStateOf<String?>(null) }
+                // Hoisted so the catalog keeps its scroll position while a demo is open.
+                val catalogGridState = rememberLazyGridState()
+                val demo = currentId?.let { id -> demoCatalog.firstOrNull { it.id == id } }
+                if (demo == null) {
+                    CatalogScreen(demos = demoCatalog, gridState = catalogGridState, onOpen = { currentId = it.id })
+                } else {
+                    DemoScreen(demo = demo, onBack = { currentId = null })
+                }
+            }
+        }
+    }
+}` },
+    foldModel: { f: "fold/FoldState.kt", c: String.raw`enum class Posture { None, Closed, Book, Tabletop, Flat }
+enum class HingeOrientation { Vertical, Horizontal }
+
+@Immutable
+data class FoldState(
+    val hasHinge: Boolean = false,
+    val posture: Posture = Posture.None,
+    val hingeAngleDegrees: Float? = null,  // 0 = fermé, 180 = à plat
+    val hingeBounds: Rect? = null,         // en pixels de la fenêtre
+    val orientation: HingeOrientation? = null,
+    val isSeparating: Boolean = false,
+    val source: FoldSource = FoldSource.None,
+) {
+    companion object { val None = FoldState() }
+}` },
+    provideFold: { f: "fold/FoldState.kt", c: String.raw`val LocalFoldState = compositionLocalOf { FoldState.None }
+
+@Composable
+fun ProvideFoldState(content: @Composable () -> Unit) {
+    val platform by rememberPlatformFoldState()
+    CompositionLocalProvider(LocalFoldState provides platform, content = content)
+}
+
+@Composable
+expect fun rememberPlatformFoldState(): State<FoldState>` },
+    foldAndroid: { f: "PlatformFoldState.android.kt", c: String.raw`var feature by remember { mutableStateOf<FoldingFeature?>(null) }
+var angle by remember { mutableStateOf<Float?>(null) }
+
+LaunchedEffect(activity) {
+    WindowInfoTracker.getOrCreate(activity).windowLayoutInfo(activity).collect { info ->
+        feature = info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
+    }
+}
+DisposableEffect(hingeSensor) {
+    // SensorEventListener sur TYPE_HINGE_ANGLE, SENSOR_DELAY_UI
+    onDispose { sensorManager.unregisterListener(listener) }
+}
+return rememberUpdatedState(foldStateOf(feature, angle, hasHingeSensor))` },
+    foldIos: { f: "PlatformFoldState.ios.kt", c: String.raw`val host = LocalUIViewController.current.view
+val density = rememberUpdatedState(LocalDensity.current.density)
+val state = remember { mutableStateOf(FoldState.None) }
+DisposableEffect(host) {
+    var observer: SHHingeObserverView? = null
+    observer = SHHingeObserverView(changeHandler = {
+        observer?.let { state.value = it.toFoldState(density.value) }
+    })
+    observer.setFrame(host.bounds)
+    host.insertSubview(observer, atIndex = 0)   // à l'arrière, jamais au-dessus du contenu
+    onDispose { observer.detach() }
+}
+return state` },
+    objc: { f: "cinterop/SHHingeObserverView.m (résumé)", c: String.raw`// Aucun type iOS 27.1 n'est nommé : tout passe par le runtime.
+Class cls = NSClassFromString(@"UIHingeInteraction");
+if (cls && [cls instancesRespondToSelector:@selector(initWithUpdateHandler:)]) {
+    __weak typeof(self) weakSelf = self;
+    id interaction = [[cls alloc] initWithUpdateHandler:^(id update) {
+        [weakSelf handleUpdate:update];   // status, angle, puis division
+    }];
+    if ([interaction conformsToProtocol:@protocol(UIInteraction)])
+        [self addInteraction:interaction];
+}
+
+- (void)detach {
+    self.changeHandler = nil;   // casse le cycle avec Kotlin
+    [self removeFromSuperview];
+}` },
+    tweaks: { f: "demos/hinge/HingeGaugeDemo.kt", c: String.raw`val real = LocalFoldState.current
+val tweaks = remember { HingeTweaksState() }          // local à l'écran
+val thicknessPx = with(LocalDensity.current) { OCCLUDING_HINGE_THICKNESS.toPx() }
+val shown = real.withTweaks(tweaks.value, thicknessPx)
+CompositionLocalProvider(LocalFoldState provides shown) {
+    HingeGaugeContent(real = real, fold = shown, tweaks = tweaks)
+}` },
+    barPlacement: { f: "core/BarPlacement.kt", c: String.raw`enum class BarEdge { Left, Right }
+
+@Immutable
+sealed interface BarPlacement {
+    data object Top : BarPlacement
+    data class Side(
+        val edge: BarEdge,
+        val itemsTop: Dp = 0.dp,   // sous la barre d'état verticale
+    ) : BarPlacement
+}
+val BarPlacement.isSide: Boolean get() = this is BarPlacement.Side
+
+val LocalBarPlacement = compositionLocalOf<BarPlacement> { BarPlacement.Top }
+
+@Composable
+fun ProvideBarPlacement(content: @Composable () -> Unit) {
+    val placement by rememberPlatformBarPlacement()
+    CompositionLocalProvider(LocalBarPlacement provides placement, content = content)
+}` },
+    barActuals: { f: "BarPlacement.android.kt · BarPlacement.ios.kt", c: String.raw`// Android : Material 3 garde Back et les actions en haut.
+actual fun rememberPlatformBarPlacement(): State<BarPlacement> =
+    remember { mutableStateOf<BarPlacement>(BarPlacement.Top) }
+
+// iOS : on lit la barre verticale du système.
+actual fun rememberPlatformBarPlacement(): State<BarPlacement> {
+    val host = LocalUIViewController.current.view
+    val state = remember { mutableStateOf<BarPlacement>(BarPlacement.Top) }
+    DisposableEffect(host) {
+        var observer: SHVerticalBarObserverView? = null
+        observer = SHVerticalBarObserverView(changeHandler = {
+            observer?.let { state.value = it.toBarPlacement() }
+        })
+        host.insertSubview(observer, atIndex = 0)
+        state.value = observer.toBarPlacement()
+        onDispose { observer.detach() }
+    }
+    return state
+}` },
+    demoModel: { f: "core/Demo.kt", c: String.raw`enum class Sharing(val label: String, val description: String) {
+    Common("100 % partagé", "Aucune ligne spécifique : tout est dans commonMain."),
+    ExpectActual("Partagé + expect/actual", "UI partagée ; seule une petite source de données change par plateforme."),
+    PlatformSpecific("Spécifique plateforme", "API propre à un OS : du code natif est obligatoire."),
+}
+
+@Immutable
+class Demo(
+    val id: String,
+    val title: String,
+    val summary: String,
+    val sharing: Sharing,
+    val notes: List<String>,             // panneau ⓘ
+    val content: @Composable () -> Unit, // le slot rempli par la démo
+)` },
+    scaffold: { f: "core/AdaptiveBarScaffold.kt", c: String.raw`@Composable
+fun AdaptiveBarScaffold(
+    title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    actions: (@Composable () -> Unit)? = null,
+    tabs: List<BarItem> = emptyList(),
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    when (val placement = LocalBarPlacement.current) {
+        BarPlacement.Top -> Scaffold(
+            modifier = modifier,
+            topBar = { TopAppBar(title = title, navigationIcon = { navigationIcon?.invoke() }, actions = { actions?.invoke() }) },
+            content = content,
+        )
+        is BarPlacement.Side -> SideBarLayout(placement, title, navigationIcon, actions, tabs, modifier, content)
+    }
+}` },
+    hostBarItems: { f: "core/BarItems.kt", c: String.raw`val LocalBarItems = staticCompositionLocalOf<BarItemsRegistry?> { null }
+
+@Composable
+fun HostBarItems(actions: List<BarItem> = emptyList(), tabs: List<BarItem> = emptyList()) {
+    val registry = LocalBarItems.current ?: return
+    val token = remember { Any() }
+    SideEffect { registry.set(token, actions, tabs) }
+    DisposableEffect(registry) { onDispose { registry.clear(token) } }
+}
+
+// Dans une démo (BookModeDemo) :
+if (LocalBarPlacement.current.isSide) {
+    HostBarItems(actions = listOf(previousPage, nextPage))
+}` },
+    systemBack: { f: "core/SystemBack.kt", c: String.raw`@Composable
+fun rememberSystemBack(fallback: () -> Unit): () -> Unit {
+    val owner = LocalNavigationEventDispatcherOwner.current
+    val currentFallback by rememberUpdatedState(fallback)
+    val input = remember { DirectNavigationEventInput() }
+    DisposableEffect(owner) {
+        val dispatcher = owner?.navigationEventDispatcher
+        dispatcher?.addInput(input)
+        onDispose { dispatcher?.removeInput(input) }
+    }
+    return remember(owner) {
+        if (owner == null) { { currentFallback() } } else { { input.backCompleted() } }
+    }
+}
+
+// DemoScreen
+NavigationBackHandler(
+    state = rememberNavigationEventState(NavigationEventInfo.None),
+    onBackCompleted = onBack,
+)
+val back = rememberSystemBack(fallback = onBack)` },
+    twoPaneSig: { f: "demos/hinge/FoldAwareTwoPane.kt", c: String.raw`enum class TwoPaneMode { Single, Balanced, FoldStartEnd, FoldTopBottom }
+
+@Composable
+fun FoldAwareTwoPane(
+    first: @Composable (TwoPaneArrangement) -> Unit,
+    second: @Composable (TwoPaneArrangement) -> Unit,
+    modifier: Modifier = Modifier,
+    state: FoldAwareTwoPaneState? = null,   // le mode choisi, lisible par l'appelant
+    wideBreakpoint: Dp = 600.dp,
+    singlePane: @Composable (TwoPaneArrangement) -> Unit = first,
+)` },
+    avoidingFold: { f: "demos/panes/PanesCommon.kt", c: String.raw`internal fun PaneScaffoldDirective.avoidingFold(fold: FoldState): PaneScaffoldDirective {
+    val hinge = fold.separatingVerticalHinge() ?: return this
+    return copy(
+        maxHorizontalPartitions = maxOf(maxHorizontalPartitions, 2),
+        excludedBounds = listOf(hinge),
+    )
+}` },
+    dragDrop: { f: "demos/platform/DragDropDemo.kt", c: String.raw`internal expect fun plainTextTransferData(text: String): DragAndDropTransferData
+internal expect fun DragAndDropEvent.hasPlainText(): Boolean
+internal expect fun DragAndDropEvent.readPlainText(onResult: (DroppedText?) -> Unit)
+internal expect val dragPayloadDescription: String` },
+    capability: { f: "demos/platform/PlatformKit.kt", c: String.raw`interface CapabilityController {
+    val capabilities: List<Capability>
+    val facts: List<Pair<String, String>>
+    val events: List<String>
+    val notice: String?
+    fun start(id: String)
+    fun stop(id: String)
+}
+
+@Composable internal expect fun rememberDisplayModesController(): CapabilityController
+@Composable internal expect fun rememberMultiWindowController(): CapabilityController` },
+    outerKotlin: { f: "iosMain/…/OuterDisplay.ios.kt", c: String.raw`interface OuterDisplayHost {
+    fun setOuterDisplayActive(active: Boolean)
+}
+
+object OuterDisplayBridge {
+    internal var host by mutableStateOf<OuterDisplayHost?>(null)
+        private set
+    fun register(host: OuterDisplayHost) { this.host = host }
+}
+
+fun OuterDisplayViewController(): UIViewController = ComposeUIViewController {
+    ShowroomTheme { OuterDisplayContent(OuterDisplayMessage.text) }
+}` },
+    outerSwift: { f: "iosApp/OuterDisplayAccessory.swift", c: String.raw`final class OuterDisplayModel: NSObject, ObservableObject, OuterDisplayHost {
+    static let shared = OuterDisplayModel()
+
+    func register() {
+        OuterDisplayBridge.shared.register(host: self)
+    }
+    func setOuterDisplayActive(active: Bool) {
+        // AVCaptureSession + CameraCaptureAccessory (iOS 27.1)
+    }
+}` }
+  };
+
+  var KW = /\b(fun|val|var|class|data|object|interface|enum|sealed|return|if|else|when|is|by|actual|expect|internal|private|override|companion|import|null|true|false|let|static|struct|init|func|final|some|self|typeof|nil|__weak)\b/;
+  var TOKEN = /(\/\/[^\n]*)|("(?:[^"\\\n]|\\.)*")|(@[A-Za-z_]\w*)|\b(fun|val|var|class|data|object|interface|enum|sealed|return|if|else|when|is|by|actual|expect|internal|private|override|companion|null|true|false|let|static|struct|init|func|final|some|self|nil)\b/g;
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function highlight(src) {
+    var out = "", last = 0, m;
+    TOKEN.lastIndex = 0;
+    while ((m = TOKEN.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      var cls = m[1] ? "t-com" : m[2] ? "t-str" : m[3] ? "t-ann" : "t-kw";
+      out += '<span class="' + cls + '">' + esc(m[0]) + "</span>";
+      last = TOKEN.lastIndex;
+    }
+    return out + esc(src.slice(last));
+  }
+  document.querySelectorAll("[data-code]").forEach(function (el) {
+    var s = CODE[el.getAttribute("data-code")];
+    if (!s) return;
+    el.className = "code-wrap";
+    el.innerHTML = '<div class="code-head"><span>' + esc(s.f) + '</span><button type="button" class="copy">Copier</button></div><pre class="code"><code>' + highlight(s.c) + "</code></pre>";
+    var btn = el.querySelector(".copy");
+    btn.addEventListener("click", function () {
+      var done = function () { btn.textContent = "Copié"; setTimeout(function () { btn.textContent = "Copier"; }, 1400); };
+      try {
+        navigator.clipboard.writeText(s.c).then(done, function () { selectCode(el); });
+      } catch (e) { selectCode(el); }
+    });
+  });
+  function selectCode(el) {
+    var r = document.createRange(); r.selectNodeContents(el.querySelector("pre"));
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  }
+
+  // ---------- Boutons segmentés génériques ----------
+  var segState = {};
+  function bindSeg(group, onChange) {
+    var root = document.querySelector('[data-group="' + group + '"]');
+    var btns = root.querySelectorAll("button");
+    btns.forEach(function (b) {
+      if (b.getAttribute("aria-pressed") === "true") segState[group] = b.dataset.v;
+      b.addEventListener("click", function () {
+        btns.forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        segState[group] = b.dataset.v; onChange();
+      });
+    });
+  }
+
+  // ---------- Arbre de composition ----------
+  var TREE = [
+    { d: 0, n: "App()", k: "point d'entrée", t: "Appelé tel quel par MainActivity et par MainViewController. Ne prend aucun paramètre : tout l'état vit dans la composition.", w: "App.kt" },
+    { d: 1, n: "ShowroomTheme", k: "thème", t: "MaterialTheme avec deux palettes (claire, sombre) choisies par isSystemInDarkTheme(). Seules les couleurs sont personnalisées : primaire sarcelle, tertiaire violet. Fournit aussi SharingBadge, la pastille verte, ambre ou rouge.", w: "core/Theme.kt" },
+    { d: 2, n: "ProvideFoldState", k: "provider", t: "Lit la source native de pliure et la fournit dans LocalFoldState. Tout le sous-arbre peut savoir si une charnière existe, sa posture, son angle et sa position en pixels de fenêtre.", w: "fold/FoldState.kt", link: "#foldstate" },
+    { d: 3, n: "ProvideBarPlacement", k: "provider", t: "Lit où le système veut les contrôles (Top ou Side) et le fournit dans LocalBarPlacement. Placé sous ProvideFoldState mais indépendant de lui.", w: "core/BarPlacement.kt", link: "#barplacement" },
+    { d: 4, n: "currentId · catalogGridState", k: "état", t: "currentId (rememberSaveable) décide de l'écran affiché. catalogGridState est remonté ici pour que le catalogue garde sa position de défilement pendant qu'une démo est ouverte.", w: "App.kt:21-24", link: "#ecrans" },
+    { d: 5, n: "CatalogScreen", k: "si currentId == null", t: "La grille des 13 démos, groupées par niveau de partage. Ne fait que remonter un événement onOpen(demo).", w: "core/CatalogScreen.kt", link: "#ecrans" },
+    { d: 5, n: "DemoScreen", k: "sinon", t: "L'hôte commun : AdaptiveBarScaffold, Back, bouton ⓘ, registre LocalBarItems, gestion du retour. Il appelle demo.content() dans l'espace restant.", w: "core/DemoScreen.kt", link: "#ecrans" },
+    { d: 6, n: "AdaptiveBarScaffold", k: "layout", t: "Lit LocalBarPlacement : TopAppBar en mode Top, NavigationRail latéral en mode Side.", w: "core/AdaptiveBarScaffold.kt", link: "#scaffold" },
+    { d: 7, n: "demo.content()", k: "slot", t: "Le composable de la démo. Il peut lire LocalFoldState, LocalBarPlacement, et déclarer des boutons pour la barre de l'hôte avec HostBarItems.", w: "demos/**", link: "#demos" }
+  ];
+  var treeEl = document.getElementById("tree"), detailEl = document.getElementById("tree-detail");
+  TREE.forEach(function (node, i) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.style.marginLeft = (node.d * 14) + "px";
+    b.style.width = "calc(100% - " + (node.d * 14) + "px)";
+    b.innerHTML = '<span class="kind">' + esc(node.k) + "</span>" + esc(node.n);
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", function () { selectNode(i); });
+    treeEl.appendChild(b);
+  });
+  function selectNode(i) {
+    var node = TREE[i];
+    treeEl.querySelectorAll("button").forEach(function (b, j) { b.setAttribute("aria-pressed", String(i === j)); });
+    detailEl.innerHTML = "<h4>" + esc(node.n) + '</h4><p class="where">' + esc(node.w) + "</p><p>" + esc(node.t) + "</p>" +
+      (node.link ? '<p><a href="' + node.link + '">Lire la section détaillée</a></p>' : "");
+  }
+  selectNode(2);
+
+  // ---------- Onglets FoldState ----------
+  var foldTabs = document.querySelectorAll("#fold-tabs button");
+  foldTabs.forEach(function (b) {
+    b.addEventListener("click", function () {
+      foldTabs.forEach(function (x) {
+        x.setAttribute("aria-pressed", String(x === b));
+        document.getElementById("fold-tab-" + x.dataset.tab).hidden = x !== b;
+      });
+    });
+  });
+
+  // ---------- Simulateur BarPlacement ----------
+  function renderBar() {
+    var p = segState["bp-platform"], s = segState["bp-screen"], o = segState["bp-orient"], e = segState["bp-edge"];
+    var side = p === "ios" && (s === "out" || o === "land");
+    document.getElementById("bp-edge-field").hidden = !side;
+    var phone = document.getElementById("bp-phone");
+    phone.className = "phone " + (o === "portrait" ? "portrait" : "land") + "-" + s;
+    var hinge = s === "in" ? (o === "portrait" ? '<div class="hinge-line" style="left:50%;top:0;bottom:0;width:2px;"></div>' : '<div class="hinge-line" style="top:50%;left:0;right:0;height:2px;"></div>') : "";
+    var content = '<div class="p-content"><i style="width:80%"></i><i></i><i style="width:60%"></i><i></i><i style="width:70%"></i></div>';
+    if (side) {
+      var rail = '<div class="p-rail ' + (e === "Left" ? "left" : "right") + '"><span class="ico">‹</span><span class="ico">i</span></div>';
+      var col = '<div class="p-col"><div class="p-title">Mode livre</div>' + content + "</div>";
+      phone.innerHTML = '<div class="sysbar-side" style="' + (e === "Left" ? "left:0" : "right:0") + '"></div>' + (e === "Left" ? rail + col : col + rail) + hinge;
+      document.getElementById("bp-result").textContent = "BarPlacement.Side(\n  edge = BarEdge." + e + ",\n  itemsTop = 52.dp\n)";
+    } else {
+      phone.innerHTML = '<div class="sysbar-top"></div><div class="p-col"><div class="p-topbar"><span class="ico">‹</span><span>Mode livre</span><span class="sp"></span><span class="ico">i</span></div>' + content + "</div>" + hinge;
+      document.getElementById("bp-result").textContent = "BarPlacement.Top";
+    }
+    var note;
+    if (p === "android") note = "Android renvoie toujours Top : Material 3 garde Back et les actions dans la TopAppBar à toutes les tailles. Les destinations passent dans un rail via NavigationSuiteScaffold, dessiné par l'écran lui-même.";
+    else if (side) note = "iPhone Duo : sur l'écran externe et sur l'écran interne en paysage, Back, les actions et les onglets passent dans une barre verticale du côté de la barre système. AdaptiveBarScaffold dessine un NavigationRail.";
+    else note = "iPhone Duo, écran interne en portrait : la barre système est en haut, la top bar classique reste la règle.";
+    document.getElementById("bp-note").textContent = note;
+  }
+  ["bp-platform", "bp-screen", "bp-orient", "bp-edge"].forEach(function (g) { bindSeg(g, renderBar); });
+  renderBar();
+
+  // ---------- Simulateur App() ----------
+  var DEMOS = [
+    { id: "window-inspector", t: "Inspecteur de fenêtre", s: "common", api: "currentWindowAdaptiveInfoV2(), LocalWindowInfo, WindowInsets", n: "aucun" },
+    { id: "nav-suite", t: "Navigation adaptative", s: "common", api: "NavigationSuiteScaffold, HostBarItems", n: "aucun" },
+    { id: "adaptive-grid", t: "Grille adaptative", s: "common", api: "LazyVerticalGrid, BoxWithConstraints (colonnes paires)", n: "aucun" },
+    { id: "list-detail", t: "Liste / détail", s: "common", api: "ListDetailPaneScaffold, rememberFoldAwarePaneDirective()", n: "aucun" },
+    { id: "supporting-pane", t: "Panneau secondaire", s: "common", api: "SupportingPaneScaffold", n: "aucun" },
+    { id: "nav3-scenes", t: "Navigation 3 : scènes", s: "common", api: "NavDisplay, SceneStrategy maison, FoldAwareTwoPane", n: "aucun" },
+    { id: "continuity", t: "Continuité d'état", s: "common", api: "remember vs rememberSaveable, snapshotFlow", n: "bouton Activity.recreate() (Android)" },
+    { id: "hinge-gauge", t: "Jauge de charnière", s: "ea", api: "LocalFoldState re-fourni, HingeTweaks, Canvas", n: "source du FoldState" },
+    { id: "book-mode", t: "Mode livre", s: "ea", api: "FoldAwareTwoPane (FoldStartEnd), HostBarItems", n: "source du FoldState" },
+    { id: "tabletop", t: "Mode chevalet", s: "ea", api: "FoldAwareTwoPane (FoldTopBottom), withFrameNanos", n: "source du FoldState" },
+    { id: "drag-drop", t: "Glisser-déposer", s: "ea", api: "dragAndDropSource / dragAndDropTarget", n: "charge utile : ≈ 35 l. Android, ≈ 70 l. iOS" },
+    { id: "display-modes", t: "Écran externe et double écran", s: "ps", api: "WindowAreaController · CameraCaptureAccessory", n: "≈ 270 l. Android ; ≈ 215 l. Kotlin + ≈ 140 l. Swift iOS" },
+    { id: "multi-window", t: "Multi-fenêtre", s: "ps", api: "FLAG_ACTIVITY_LAUNCH_ADJACENT · activateSceneSessionForRequest", n: "≈ 140 l. Android ; ≈ 260 l. iOS" }
+  ];
+  var LEVEL = { common: ["100 % partagé", "b-common"], ea: ["Partagé + expect/actual", "b-ea"], ps: ["Spécifique plateforme", "b-ps"] };
+  var sim = { currentId: null, scroll: 0, info: false, rotations: 0 };
+  var screenEl = document.getElementById("sim-screen");
+  function badge(s) { return '<span class="badge ' + LEVEL[s][1] + '">' + LEVEL[s][0] + "</span>"; }
+  function renderSim(msg) {
+    var demo = DEMOS.filter(function (d) { return d.id === sim.currentId; })[0];
+    if (!demo) {
+      var html = '<div class="screen-bar"><span>Fold Showroom <small>· 673 × 841 dp · posture à plat</small></span></div><div class="screen-body" id="sim-scroll">';
+      ["common", "ea", "ps"].forEach(function (lvl) {
+        html += '<div class="cat-grp">' + badge(lvl) + '<div class="cat-grid">';
+        DEMOS.filter(function (d) { return d.s === lvl; }).forEach(function (d) {
+          html += '<button type="button" class="cat-card" data-id="' + d.id + '">' + esc(d.t) + "</button>";
+        });
+        html += "</div></div>";
+      });
+      screenEl.innerHTML = html + "</div>";
+      var sc = document.getElementById("sim-scroll");
+      sc.scrollTop = sim.scroll;
+      sc.addEventListener("scroll", function () { sim.scroll = sc.scrollTop; updateState(); });
+      screenEl.querySelectorAll(".cat-card").forEach(function (c) {
+        c.addEventListener("click", function () { sim.currentId = c.dataset.id; sim.info = false; renderSim("onOpen → currentId = \"" + c.dataset.id + "\". DemoScreen remplace CatalogScreen ; le catalogue sort de la composition mais catalogGridState, remonté dans App(), garde la position."); });
+      });
+    } else {
+      screenEl.innerHTML = '<div class="screen-bar"><button type="button" class="icon-btn" id="sim-up" aria-label="Retour">‹</button><span>' + esc(demo.t) + "</span>" + badge(demo.s) + '<span class="sp"></span><button type="button" class="icon-btn" id="sim-info" aria-label="Partagé ou spécifique ?">i</button></div>' +
+        '<div class="screen-body"><p class="note">demo.content() s\'affiche ici, dans l\'espace laissé par la barre, insets déjà consommés.</p><div class="kv"><span>APIs</span><span>' + esc(demo.api) + "</span><span>Natif</span><span>" + esc(demo.n) + "</span></div></div>" +
+        (sim.info ? '<div class="sheet"><b>ModalBottomSheet · demo.notes</b><span>' + esc(LEVEL[demo.s][0]) + " : le détail de ce qui est partagé, natif, et des pièges rencontrés.</span></div>" : "");
+      document.getElementById("sim-up").addEventListener("click", function () { goBack("Bouton Back → rememberSystemBack() injecte l'événement dans le dispatcher → NavigationBackHandler de DemoScreen → onBack() → currentId = null."); });
+      document.getElementById("sim-info").addEventListener("click", function () { sim.info = !sim.info; renderSim(sim.info ? "showInfo = true (rememberSaveable) : la feuille ⓘ s'ouvre." : "showInfo = false."); });
+    }
+    document.getElementById("sim-back").disabled = !demo;
+    if (msg) { var log = document.getElementById("sim-log"); log.textContent = msg; log.classList.remove("flash"); void log.offsetWidth; log.classList.add("flash"); }
+    updateState();
+  }
+  function goBack(msg) { sim.currentId = null; sim.info = false; renderSim(msg); }
+  function updateState() {
+    document.getElementById("sim-state").innerHTML =
+      "<span>currentId</span><span>" + (sim.currentId ? '"' + sim.currentId + '"' : "null") + "</span>" +
+      "<span>écran</span><span>" + (sim.currentId ? "DemoScreen" : "CatalogScreen") + "</span>" +
+      "<span>gridState</span><span>scroll " + Math.round(sim.scroll) + " px</span>" +
+      "<span>recréations</span><span>" + sim.rotations + "</span>";
+  }
+  document.getElementById("sim-back").addEventListener("click", function () { goBack("Retour système (ou geste de bord iOS) → même dispatcher → onBack() → currentId = null."); });
+  document.getElementById("sim-rotate").addEventListener("click", function () {
+    sim.rotations++;
+    renderSim("Configuration changée : currentId est en rememberSaveable, l'écran affiché ne change pas." + (sim.currentId ? " showInfo aussi est saveable." : ""));
+  });
+  renderSim();
+
+  // ---------- arrange() ----------
+  var TP_STEPS = [
+    { id: "tp-bounds", label: "hingeBounds présent", reason: "NoFold" },
+    { id: "tp-inside", label: "Le pli coupe le composant", reason: "HingeOutside" },
+    { id: "tp-sep", label: "Le pli est séparant", reason: "NotSeparating" },
+    { id: "tp-full", label: "Il traverse tout le composant", reason: "HingePartial" },
+    { id: "tp-size", label: "Assez de place de chaque côté", reason: "PaneTooSmall" }
+  ];
+  function renderTp() {
+    var stopAt = -1;
+    TP_STEPS.forEach(function (s, i) {
+      var input = document.getElementById(s.id);
+      var blocked = stopAt !== -1;
+      input.disabled = blocked;
+      input.closest(".check").classList.toggle("disabled", blocked);
+      if (!blocked && !input.checked) stopAt = i;
+    });
+    var vertical = segState["tp-orient"] === "v", wide = segState["tp-wide"] === "1";
+    var mode, reason;
+    if (stopAt === -1) { mode = vertical ? "FoldStartEnd" : "FoldTopBottom"; reason = "SeparatingFold"; }
+    else { mode = wide ? "Balanced" : "Single"; reason = TP_STEPS[stopAt].reason; }
+    var html = "";
+    TP_STEPS.forEach(function (s, i) {
+      var cls = stopAt === -1 || i < stopAt ? "passed" : i === stopAt ? "stop" : "";
+      html += '<li class="' + cls + '">' + esc(s.label) + (i === stopAt ? " → repli : " + reason : "") + "</li>";
+    });
+    html += '<li class="' + (stopAt === -1 ? "win" : "") + '">Découper autour du pli</li>';
+    document.getElementById("tp-steps").innerHTML = html;
+    document.getElementById("tp-result").textContent = "TwoPaneArrangement(\n  mode = TwoPaneMode." + mode + ",\n  reason = TwoPaneReason." + reason + "\n)";
+    var P = document.getElementById("tp-panes"), hingeLine = "";
+    var hingeVisible = document.getElementById("tp-bounds").checked && document.getElementById("tp-inside").checked;
+    if (hingeVisible) hingeLine = vertical ? '<div class="hinge-line" style="left:calc(50% - 1px);top:0;bottom:0;width:2px;opacity:.9"></div>' : '<div class="hinge-line" style="top:calc(50% - 1px);left:0;right:0;height:2px;opacity:.9"></div>';
+    var a, b;
+    if (mode === "Single") { a = "inset:0"; b = "display:none"; }
+    else if (mode === "Balanced" || mode === "FoldStartEnd") { a = "left:0;top:0;bottom:0;width:calc(50% - 4px)"; b = "right:0;top:0;bottom:0;width:calc(50% - 4px)"; }
+    else { a = "left:0;right:0;top:0;height:calc(50% - 4px)"; b = "left:0;right:0;bottom:0;height:calc(50% - 4px)"; }
+    P.innerHTML = '<div class="pane a" style="' + a + '">first</div><div class="pane b" style="' + b + '">second</div>' + hingeLine;
+  }
+  TP_STEPS.forEach(function (s) { document.getElementById(s.id).addEventListener("change", renderTp); });
+  bindSeg("tp-orient", renderTp); bindSeg("tp-wide", renderTp);
+  renderTp();
+
+  // ---------- Tableau des démos ----------
+  var rows = document.getElementById("demo-rows");
+  function renderDemos(f) {
+    rows.innerHTML = DEMOS.filter(function (d) { return f === "all" || d.s === f; }).map(function (d) {
+      return "<tr><td><b>" + esc(d.t) + '</b><div class="where">' + esc(d.id) + "</div></td><td>" + badge(d.s) + "</td><td>" + esc(d.api) + "</td><td>" + esc(d.n) + "</td></tr>";
+    }).join("");
+  }
+  bindChips("demo-filter", renderDemos);
+  renderDemos("all");
+
+  // ---------- Patterns ----------
+  var PATTERNS = [
+    { c: "compose", t: "Provider de CompositionLocal", d: "Une valeur transverse est calculée une fois en haut de l'arbre et lue n'importe où, sans la passer de paramètre en paramètre.", w: "ProvideFoldState, ProvideBarPlacement, LocalBarItems" },
+    { c: "compose", t: "Surcharge locale d'un CompositionLocal", d: "Un sous-arbre re-fournit une version modifiée de la valeur. Le reste de l'app n'est pas affecté.", w: "HingeGaugeDemo + withTweaks()" },
+    { c: "compose", t: "Slot API", d: "Les composants reçoivent des lambdas composables au lieu de connaître leur contenu.", w: "AdaptiveBarScaffold, Demo.content, FoldAwareTwoPane(first, second), PlatformDemoPage" },
+    { c: "compose", t: "State hoisting", d: "L'état est remonté au parent qui en a besoin ; les écrans sont sans état et remontent des événements.", w: "currentId et catalogGridState dans App(), CatalogScreen(onOpen), DemoScreen(onBack), FoldAwareTwoPaneState" },
+    { c: "compose", t: "Navigation par état", d: "Deux niveaux d'écran pilotés par une seule valeur saveable, sans back stack ni bibliothèque de navigation.", w: "App.kt, if (demo == null)" },
+    { c: "compose", t: "Hôte / template", d: "Un écran générique fournit le même chrome à tous les contenus qu'il héberge.", w: "DemoScreen" },
+    { c: "compose", t: "Remontée enfant → parent par registre", d: "L'enfant déclare des items dans un registre fourni par le parent, avec un jeton propriétaire et un nettoyage à la sortie de composition.", w: "HostBarItems, BarItemsRegistry" },
+    { c: "multiplateforme", t: "expect / actual", d: "Le code commun déclare une fonction ; chaque plateforme en fournit l'implémentation. L'UI ne voit que la déclaration.", w: "rememberPlatformFoldState, rememberPlatformBarPlacement, glisser-déposer, rememberActivityRecreator" },
+    { c: "multiplateforme", t: "Adapter", d: "Les types natifs sont traduits vers un modèle commun neutre et immuable.", w: "foldStateOf() (Android), toFoldState() et toBarPlacement() (iOS)" },
+    { c: "multiplateforme", t: "Pont natif par le runtime", d: "Une vue Objective-C atteint des API absentes des bindings Kotlin/Native via NSClassFromString et respondsToSelector.", w: "SHHingeObserverView, SHVerticalBarObserverView, hinge.def" },
+    { c: "multiplateforme", t: "Inversion de dépendance (port)", d: "Kotlin déclare une interface ; Swift l'implémente et s'enregistre au démarrage.", w: "OuterDisplayHost, OuterDisplayBridge.register()" },
+    { c: "multiplateforme", t: "Strategy par interface", d: "Une interface commune, une implémentation par plateforme et par fonctionnalité. L'UI ne dépend que de l'interface.", w: "CapabilityController (4 implémentations)" },
+    { c: "comportement", t: "Observer", d: "Les changements natifs (flow, capteur, trait UIKit) sont poussés dans un MutableState, qui recompose les lecteurs.", w: "windowLayoutInfo().collect, SensorEventListener, changeHandler Objective-C" },
+    { c: "comportement", t: "Chaîne de responsabilité", d: "Le retour passe par un dispatcher ; le handler le plus interne a la priorité.", w: "NavigationBackHandler, rememberSystemBack(), rememberPaneBack()" },
+    { c: "comportement", t: "Table de décision explicable", d: "Le choix de disposition renvoie un mode et la raison de ce mode, affichable à l'écran.", w: "arrange() → TwoPaneMode + TwoPaneReason" },
+    { c: "comportement", t: "Registre / catalogue déclaratif", d: "Les démos sont des valeurs dans une liste. Chacune se décrit elle-même (niveau de partage, notes).", w: "demoCatalog, Demo, Sharing" },
+    { c: "comportement", t: "Null object", d: "Une valeur par défaut neutre évite les null et permet d'utiliser un composable hors de App().", w: "FoldState.None, BarPlacement.Top" },
+    { c: "comportement", t: "Type scellé comme état d'UI", d: "Un when exhaustif oblige à traiter chaque cas.", w: "BarPlacement (Top / Side), TwoPaneMode" }
+  ];
+  var grid = document.getElementById("pattern-grid");
+  function renderPatterns(f) {
+    grid.innerHTML = PATTERNS.filter(function (p) { return f === "all" || p.c === f; }).map(function (p) {
+      return '<article class="pattern"><span class="cat">' + esc(p.c) + "</span><h3>" + esc(p.t) + "</h3><p>" + esc(p.d) + '</p><p class="where">' + esc(p.w) + "</p></article>";
+    }).join("");
+  }
+  bindChips("pattern-filter", renderPatterns);
+  renderPatterns("all");
+
+  function bindChips(id, fn) {
+    var chips = document.querySelectorAll("#" + id + " .chip");
+    chips.forEach(function (c) {
+      c.addEventListener("click", function () {
+        chips.forEach(function (x) { x.setAttribute("aria-pressed", String(x === c)); });
+        fn(c.dataset.f);
+      });
+    });
+  }
+
+  // ---------- Sommaire actif ----------
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var sections = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+  function spy() {
+    var y = window.scrollY + 120, idx = 0;
+    sections.forEach(function (s, i) { if (s && s.offsetTop <= y) idx = i; });
+    links.forEach(function (a, i) { a.classList.toggle("active", i === idx); });
+  }
+  window.addEventListener("scroll", spy, { passive: true });
+  spy();
+})();
+</script>
