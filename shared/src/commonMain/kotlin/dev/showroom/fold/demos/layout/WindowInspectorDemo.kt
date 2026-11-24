@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.BarEdge
 import dev.showroom.fold.core.BarPlacement
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
 import dev.showroom.fold.fold.LocalFoldState
@@ -91,7 +93,7 @@ private fun WindowInspector() {
     val landscape = sizePx.width > sizePx.height
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val wClass = widthClassName(widthDp)

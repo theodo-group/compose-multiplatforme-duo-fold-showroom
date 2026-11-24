@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
 import dev.showroom.fold.core.isSide
@@ -115,7 +117,7 @@ private fun ArticleDetail(article: Article, onBack: (() -> Unit)?) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxSize()) {
             if (onBack != null) BackRow("Retour à la liste", onBack)
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets).padding(16.dp)) {
                 ArticleText(article)
             }
         }

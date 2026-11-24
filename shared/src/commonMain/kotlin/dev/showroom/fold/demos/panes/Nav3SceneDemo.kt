@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -45,6 +46,7 @@ import androidx.navigation3.scene.SceneStrategy
 import androidx.navigation3.scene.SceneStrategyScope
 import androidx.navigation3.ui.NavDisplay
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.Sharing
 import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.isSide
@@ -312,7 +314,7 @@ private fun Nav3SceneContent() {
 @Composable
 private fun DetailPane(articleId: Int, onOpen: (Int) -> Unit) {
     val article = articleById(articleId)
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets).padding(16.dp)) {
         ArticleText(article)
         Text(
             "À lire ensuite (ajoute une entrée à la pile)",

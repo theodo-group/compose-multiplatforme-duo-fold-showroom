@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.BarItem
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.HostBarItems
 import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
@@ -285,7 +287,7 @@ private fun EndOfBook(arrangement: TwoPaneArrangement) {
 /** Reading position only (no controls): used when previous / next live in the host's vertical bar. */
 @Composable
 private fun ReaderProgress(label: String, progress: Float) {
-    Column(Modifier.fillMaxWidth()) {
+    Column(Modifier.fillMaxWidth().windowInsetsPadding(DemoBottomInsets)) {
         LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
         // Start-aligned, never centred: in book posture the centre of the row is the fold.
         Text(
@@ -325,8 +327,9 @@ private fun ReaderNavigation(
         }
     }
 
+    // Drawn behind the navigation bar, controls above it.
     Surface(tonalElevation = 2.dp) {
-        Column {
+        Column(Modifier.windowInsetsPadding(DemoBottomInsets)) {
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
             if (splitAtFold) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -37,10 +38,11 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.BarItem
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.HostBarItems
 import dev.showroom.fold.core.LocalBarPlacement
-import dev.showroom.fold.core.isSide
 import dev.showroom.fold.core.Sharing
+import dev.showroom.fold.core.isSide
 
 val navigationSuiteDemo = Demo(
     id = "nav-suite",
@@ -166,7 +168,7 @@ private fun DestinationContent(dest: Dest) {
         Dest.Settings -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

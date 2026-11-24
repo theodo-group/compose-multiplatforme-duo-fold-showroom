@@ -4,9 +4,11 @@ package dev.showroom.fold.demos.panes
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.rememberSystemBack
 import dev.showroom.fold.fold.FoldState
 import dev.showroom.fold.fold.HingeOrientation
@@ -214,6 +217,7 @@ internal fun ArticleList(selectedId: Int?, onSelect: (Int) -> Unit) {
                 modifier = Modifier.clickable { onSelect(article.id) },
             )
         }
+        item(key = "bottom-inset") { Spacer(Modifier.windowInsetsBottomHeight(DemoBottomInsets)) }
     }
 }
 

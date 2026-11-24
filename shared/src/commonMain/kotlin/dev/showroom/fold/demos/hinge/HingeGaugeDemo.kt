@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
 import dev.showroom.fold.core.isSide
@@ -142,7 +144,7 @@ private fun HingeGaugeContent(real: FoldState, fold: FoldState, tweaks: HingeTwe
             modifier = Modifier.weight(1f),
             singlePane = {
                 Column(
-                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     TweaksCard(real, tweaks)
@@ -151,10 +153,10 @@ private fun HingeGaugeContent(real: FoldState, fold: FoldState, tweaks: HingeTwe
                     Timeline(events)
                 }
             },
-            first = { GaugeCard(real, fold, angleTweaked, Modifier.fillMaxSize().padding(16.dp)) },
+            first = { GaugeCard(real, fold, angleTweaked, Modifier.fillMaxSize().windowInsetsPadding(DemoBottomInsets).padding(16.dp)) },
             second = {
                 Column(
-                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     TweaksCard(real, tweaks)

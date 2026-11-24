@@ -2,7 +2,12 @@ package dev.showroom.fold.demos.hinge
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
@@ -174,9 +179,12 @@ private fun TwoPaneLayout(
     first: @Composable (TwoPaneArrangement) -> Unit,
     second: @Composable (TwoPaneArrangement) -> Unit,
 ) {
+    val aboveFold = arrangement.mode == TwoPaneMode.FoldTopBottom
+    val bottomInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
     Layout(
         contents = listOf(
-            { Box(Modifier.clipToBounds()) { first(arrangement) } },
+            // Above a horizontal fold, the first pane never reaches the bottom safe area.
+            { Box(Modifier.clipToBounds().then(if (aboveFold) Modifier.consumeWindowInsets(bottomInsets) else Modifier)) { first(arrangement) } },
             { Box(Modifier.clipToBounds()) { second(arrangement) } },
         ),
         modifier = Modifier.fillMaxSize(),

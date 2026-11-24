@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.showroom.fold.core.DemoBottomInsets
 
 /** The platform this binary runs on. Each demo uses it to highlight "its" native-cost card. */
 internal enum class PlatformKind(val label: String) { Android("Android"), Ios("iOS") }
@@ -112,6 +114,8 @@ internal fun PlatformDemoPage(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                // Also consumes it for the outer display preview, which pads with the safe area.
+                .windowInsetsPadding(DemoBottomInsets)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

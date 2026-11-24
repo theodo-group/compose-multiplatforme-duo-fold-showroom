@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.Sharing
 import kotlin.time.TimeSource
 
@@ -111,15 +113,15 @@ private fun Continuity() {
             }
             if (twoPanes) {
                 Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Controls(plainCount, { plainCount++ }, savedCount, { savedCount++ }, text) { text = it }
                         Journal(journal)
                     }
-                    ScrollList(listState, Modifier.weight(1f).fillMaxSize())
+                    ScrollList(listState, Modifier.weight(1f).fillMaxSize().windowInsetsPadding(DemoBottomInsets))
                 }
             } else {
                 Column(
-                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets).padding(horizontal = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Controls(plainCount, { plainCount++ }, savedCount, { savedCount++ }, text) { text = it }

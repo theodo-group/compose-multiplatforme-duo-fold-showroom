@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.LocalBarPlacement
 import dev.showroom.fold.core.Sharing
 import dev.showroom.fold.core.isSide
@@ -81,7 +83,7 @@ private fun SupportingPaneContent() {
             mainPane = {
                 AnimatedPane {
                     Surface(Modifier.fillMaxSize()) {
-                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets).padding(16.dp)) {
                             ArticleText(article)
                             if (!supportShown) {
                                 Button(
@@ -96,7 +98,7 @@ private fun SupportingPaneContent() {
             supportingPane = {
                 AnimatedPane {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceVariant) {
-                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(DemoBottomInsets)) {
                             if (!mainShown && !hostHasBack) BackRow("Retour à l'article", back)
                             Text(
                                 "Articles liés",

@@ -12,13 +12,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.showroom.fold.core.Demo
+import dev.showroom.fold.core.DemoBottomInsets
 import dev.showroom.fold.core.Sharing
 import dev.showroom.fold.fold.LocalFoldState
 import dev.showroom.fold.fold.Posture
@@ -210,7 +215,8 @@ private fun SinglePanePlayer(player: PlayerState) {
         if (maxHeight > maxWidth * 0.9f) {
             // Portrait: 16:9 video on top, the rest of the height for the playlist.
             Column(Modifier.fillMaxSize()) {
-                VideoWithOverlay(player, Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+                // At the top: its overlay controls stay clear of nothing.
+                VideoWithOverlay(player, Modifier.fillMaxWidth().aspectRatio(16f / 9f).consumeWindowInsets(DemoBottomInsets))
                 Playlist(player, header = "À suivre", modifier = Modifier.weight(1f))
             }
         } else {
@@ -254,6 +260,7 @@ private fun VideoWithOverlay(player: PlayerState, modifier: Modifier) {
                 Modifier
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))))
+                    .windowInsetsPadding(DemoBottomInsets)
                     .padding(horizontal = 16.dp)
                     .padding(top = 24.dp, bottom = 8.dp),
             ) {
@@ -372,6 +379,7 @@ private fun Playlist(player: PlayerState, header: String?, modifier: Modifier, c
                 },
             )
         }
+        item { Spacer(Modifier.windowInsetsBottomHeight(DemoBottomInsets)) }
     }
 }
 
