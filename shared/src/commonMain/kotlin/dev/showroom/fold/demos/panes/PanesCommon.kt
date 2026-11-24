@@ -40,7 +40,7 @@ import dev.showroom.fold.fold.HingeOrientation
 import dev.showroom.fold.fold.LocalFoldState
 import kotlinx.coroutines.launch
 
-/** One fake French article, shared by the three pane demos. */
+/** One fake French article, shared by the three pane demos; each has its own short body. */
 internal class Article(
     val id: Int,
     val title: String,
@@ -50,32 +50,119 @@ internal class Article(
 )
 
 internal val sampleArticles: List<Article> = listOf(
-    "Le pliage du verre ultra-fin" to "Camille Durand",
-    "Réparer son téléphone soi-même" to "Julien Moreau",
-    "Pourquoi les charnières sont si difficiles" to "Inès Lefèvre",
-    "Un clavier pour deux écrans" to "Hugo Bernard",
-    "Mode livre : lire comme sur papier" to "Léa Martin",
-    "Mode chevalet : appels vidéo mains libres" to "Louis Petit",
-    "Écrans pliables et autonomie" to "Manon Roux",
-    "Le retour du format carré" to "Théo Girard",
-    "Poser son téléphone sur la table" to "Chloé Fournier",
-    "Multitâche : deux applications côte à côte" to "Nathan Lambert",
-    "Le glisser-déposer entre fenêtres" to "Emma Fontaine",
-    "Concevoir pour tous les formats" to "Lucas Rousseau",
-    "Accessibilité et grands écrans" to "Sarah Vincent",
-    "Les tests sur appareils pliables" to "Maxime Muller",
-    "Demain : des écrans enroulables ?" to "Zoé Faure",
-).mapIndexed { index, (title, author) ->
+    Triple(
+        "Le pliage du verre ultra-fin",
+        "Camille Durand",
+        "Un écran pliable n'est pas en plastique souple : c'est un verre de moins de 0,1 mm, assez fin " +
+            "pour se courber sans casser. Il est trempé chimiquement, puis protégé par un film qui encaisse " +
+            "les rayures.\n\nLe pli reste visible sous certains angles : c'est le prix d'un rayon de courbure " +
+            "de quelques millimètres seulement.",
+    ),
+    Triple(
+        "Réparer son téléphone soi-même",
+        "Julien Moreau",
+        "Changer la batterie d'un pliable demande de décoller deux écrans au lieu d'un, et de ne pas " +
+            "abîmer la nappe qui traverse la charnière.\n\nLes fabricants publient de plus en plus de " +
+            "guides et de pièces détachées, mais l'écran intérieur reste la réparation la plus chère.",
+    ),
+    Triple(
+        "Pourquoi les charnières sont si difficiles",
+        "Inès Lefèvre",
+        "Une charnière doit tenir des centaines de milliers d'ouvertures, rester fine, laisser l'écran " +
+            "former une goutte d'eau une fois fermé et tenir seule à n'importe quel angle.\n\nChaque " +
+            "génération gagne quelques dixièmes de millimètre et quelques grammes : c'est elle qui décide de " +
+            "l'épaisseur du téléphone.",
+    ),
+    Triple(
+        "Un clavier pour deux écrans",
+        "Hugo Bernard",
+        "À moitié plié, l'écran du bas devient un clavier et celui du haut affiche le texte, comme un " +
+            "petit ordinateur portable.\n\nLe clavier logiciel doit alors se caler sur la moitié basse, " +
+            "et l'application garder le curseur visible au-dessus du pli.",
+    ),
+    Triple(
+        "Mode livre : lire comme sur papier",
+        "Léa Martin",
+        "Ouvert comme un livre, l'écran intérieur montre deux pages face à face, de part et d'autre du " +
+            "pli.\n\nUne liseuse bien faite ne coupe jamais une ligne en deux sur la charnière : chaque " +
+            "page tient d'un seul côté, et le geste pour tourner la page suit le bord de l'écran.",
+    ),
+    Triple(
+        "Mode chevalet : appels vidéo mains libres",
+        "Louis Petit",
+        "Posé à moitié ouvert sur une table, le téléphone tient debout tout seul : la caméra en haut, " +
+            "les commandes en bas.\n\nPour une visio, l'image de l'interlocuteur occupe la moitié haute " +
+            "et les boutons raccrocher, micro et caméra passent sous le pli, à portée de doigt.",
+    ),
+    Triple(
+        "Écrans pliables et autonomie",
+        "Manon Roux",
+        "Deux écrans, c'est deux dalles à alimenter, et la plus grande consomme presque autant qu'une " +
+            "tablette.\n\nLes constructeurs répartissent la batterie en deux cellules, une de chaque côté " +
+            "de la charnière, et l'écran extérieur sert aux consultations rapides pour économiser l'autre.",
+    ),
+    Triple(
+        "Le retour du format carré",
+        "Théo Girard",
+        "Déplié, un pliable offre un écran presque carré, un format qu'on n'avait plus vu depuis les " +
+            "premiers smartphones à clavier.\n\nLes interfaces pensées en colonnes étroites y semblent " +
+            "perdues : il faut passer à deux panneaux ou à une grille plus large.",
+    ),
+    Triple(
+        "Poser son téléphone sur la table",
+        "Chloé Fournier",
+        "Plié à 90 degrés et posé à plat, le téléphone devient un petit trépied : photos de groupe, " +
+            "time-lapse ou recette affichée pendant qu'on cuisine.\n\nL'application détecte cette posture " +
+            "et range ses commandes dans la moitié posée sur la table.",
+    ),
+    Triple(
+        "Multitâche : deux applications côte à côte",
+        "Nathan Lambert",
+        "Sur l'écran intérieur, deux applications tiennent côte à côte, chacune dans sa moitié.\n\n" +
+            "Chaque application reçoit alors une fenêtre de taille téléphone et doit s'y adapter sans " +
+            "redémarrer, ni perdre ce que l'utilisateur était en train d'écrire.",
+    ),
+    Triple(
+        "Le glisser-déposer entre fenêtres",
+        "Emma Fontaine",
+        "Avec deux applications ouvertes, il devient naturel de faire glisser une photo de la galerie " +
+            "vers un message.\n\nPour l'accepter, une application déclare les types de contenu qu'elle " +
+            "reçoit et indique visuellement où on peut lâcher l'élément.",
+    ),
+    Triple(
+        "Concevoir pour tous les formats",
+        "Lucas Rousseau",
+        "Plutôt que de dessiner un écran par appareil, on décrit l'interface en panneaux, et la largeur " +
+            "disponible décide combien sont visibles en même temps.\n\nLe même code s'affiche alors " +
+            "sur un téléphone, un pliable fermé ou ouvert, et une tablette.",
+    ),
+    Triple(
+        "Accessibilité et grands écrans",
+        "Sarah Vincent",
+        "Un grand écran ne doit pas servir à rapetisser le texte : quand la taille de police augmente, " +
+            "la mise en page doit passer d'un à deux panneaux, pas l'inverse.\n\nLes zones tactiles " +
+            "restent grandes, et l'ordre de lecture au lecteur d'écran suit l'ordre des panneaux.",
+    ),
+    Triple(
+        "Les tests sur appareils pliables",
+        "Maxime Muller",
+        "Tester un pliable, c'est plier et déplier au milieu d'une saisie, tourner l'appareil et passer " +
+            "en écran partagé.\n\nLes émulateurs simulent la charnière et ses postures, mais rien ne " +
+            "remplace un appareil réel pour sentir où tombe le pouce.",
+    ),
+    Triple(
+        "Demain : des écrans enroulables ?",
+        "Zoé Faure",
+        "Après le pli, les prototypes enroulent l'écran dans le boîtier et le déroulent à la demande, " +
+            "sans charnière ni pli visible.\n\nPour les applications, rien ne change vraiment : la largeur " +
+            "varie en continu, et l'interface doit déjà savoir s'y adapter.",
+    ),
+).mapIndexed { index, (title, author, body) ->
     Article(
         id = index,
         title = title,
         author = author,
-        body = "Article ${index + 1} par $author.\n\n" +
-            "Les téléphones pliables obligent à repenser l'interface : la même application doit " +
-            "s'afficher sur un petit écran extérieur, puis sur un écran intérieur presque deux fois " +
-            "plus large, sans perdre l'endroit où l'utilisateur en était.\n\n" +
-            "Une bonne pratique consiste à décrire l'interface en panneaux, et à laisser la taille " +
-            "de la fenêtre décider combien de panneaux sont visibles en même temps.",
+        body = "Article ${index + 1} par $author.\n\n$body",
         related = listOf((index + 1) % 15, (index + 4) % 15, (index + 7) % 15),
     )
 }
