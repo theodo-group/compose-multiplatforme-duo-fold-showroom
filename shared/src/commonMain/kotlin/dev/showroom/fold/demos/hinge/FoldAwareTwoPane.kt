@@ -101,6 +101,26 @@ fun FoldAwareTwoPane(
     wideBreakpoint: Dp = 600.dp,
     singlePane: @Composable (TwoPaneArrangement) -> Unit = first,
 ) {
+    FoldAwareArrangement(modifier, state, wideBreakpoint) { arrangement ->
+        if (arrangement.mode == TwoPaneMode.Single) {
+            Box(Modifier.fillMaxSize()) { singlePane(arrangement) }
+        } else {
+            TwoPaneLayout(arrangement, first, second)
+        }
+    }
+}
+
+/**
+ * The same fold-aware decision as [FoldAwareTwoPane], for content that places its panes itself
+ * (with [paneRects]), for instance to animate them.
+ */
+@Composable
+fun FoldAwareArrangement(
+    modifier: Modifier = Modifier,
+    state: FoldAwareTwoPaneState? = null,
+    wideBreakpoint: Dp = 600.dp,
+    content: @Composable (TwoPaneArrangement) -> Unit,
+) {
     val fold = LocalFoldState.current
     val density = LocalDensity.current
     val tracker = rememberWindowBoundsTracker()
@@ -116,13 +136,36 @@ fun FoldAwareTwoPane(
             minPanePx = with(density) { MIN_PANE_SIZE.toPx() },
         )
         if (state != null) SideEffect { state.arrangement = arrangement }
+        content(arrangement)
+    }
+}
 
-        if (arrangement.mode == TwoPaneMode.Single) {
-            Box(Modifier.fillMaxSize()) { singlePane(arrangement) }
-        } else {
-            TwoPaneLayout(arrangement, first, second)
+/**
+ * The first and second pane rectangles of a two-pane [TwoPaneArrangement], in the local pixels of a
+ * [width] x [height] layout: on either side of a separating hinge, else split in the middle. In RTL
+ * the first (start) pane of a side-by-side split is the right one.
+ */
+fun TwoPaneArrangement.paneRects(width: Int, height: Int, layoutDirection: LayoutDirection): Pair<IntRect, IntRect> {
+    val hinge = hinge?.bounds
+    // Physical rectangles (left-to-right, top-to-bottom), in local pixels.
+    val (a, b) = when (mode) {
+        TwoPaneMode.FoldStartEnd -> {
+            val left = hinge!!.left.roundToInt().coerceIn(0, width)
+            val right = hinge.right.roundToInt().coerceIn(left, width)
+            IntRect(0, 0, left, height) to IntRect(right, 0, width, height)
+        }
+        TwoPaneMode.FoldTopBottom -> {
+            val top = hinge!!.top.roundToInt().coerceIn(0, height)
+            val bottom = hinge.bottom.roundToInt().coerceIn(top, height)
+            IntRect(0, 0, width, top) to IntRect(0, bottom, width, height)
+        }
+        else -> {
+            val split = width / 2
+            IntRect(0, 0, split, height) to IntRect(split, 0, width, height)
         }
     }
+    val swap = layoutDirection == LayoutDirection.Rtl && mode != TwoPaneMode.FoldTopBottom
+    return if (swap) b to a else a to b
 }
 
 @Composable
@@ -140,28 +183,7 @@ private fun TwoPaneLayout(
     ) { (firstMeasurables, secondMeasurables), constraints ->
         val width = constraints.maxWidth
         val height = constraints.maxHeight
-        val hinge = arrangement.hinge?.bounds
-        // Physical rectangles (left-to-right, top-to-bottom), in local pixels.
-        val (a, b) = when (arrangement.mode) {
-            TwoPaneMode.FoldStartEnd -> {
-                val left = hinge!!.left.roundToInt().coerceIn(0, width)
-                val right = hinge.right.roundToInt().coerceIn(left, width)
-                IntRect(0, 0, left, height) to IntRect(right, 0, width, height)
-            }
-            TwoPaneMode.FoldTopBottom -> {
-                val top = hinge!!.top.roundToInt().coerceIn(0, height)
-                val bottom = hinge.bottom.roundToInt().coerceIn(top, height)
-                IntRect(0, 0, width, top) to IntRect(0, bottom, width, height)
-            }
-            else -> {
-                val split = width / 2
-                IntRect(0, 0, split, height) to IntRect(split, 0, width, height)
-            }
-        }
-        // In RTL the "start" pane is the right one; for a top/bottom split order is unchanged.
-        val swap = layoutDirection == LayoutDirection.Rtl && arrangement.mode != TwoPaneMode.FoldTopBottom
-        val firstRect = if (swap) b else a
-        val secondRect = if (swap) a else b
+        val (firstRect, secondRect) = arrangement.paneRects(width, height, layoutDirection)
         val p1 = firstMeasurables.map { it.measure(Constraints.fixed(firstRect.width, firstRect.height)) }
         val p2 = secondMeasurables.map { it.measure(Constraints.fixed(secondRect.width, secondRect.height)) }
         layout(width, height) {
