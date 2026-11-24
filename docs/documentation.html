@@ -247,6 +247,11 @@ details.more > div { padding: 0 16px 16px; display: flex; flex-direction: column
 footer { color: var(--muted); font-size: 0.88rem; border-top: 1px solid var(--line); padding-top: 20px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.xp-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.xp { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.xp header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; font-weight: 700; overflow-wrap: anywhere; }
+.xp h4 { font-family: var(--font-display); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin: 6px 0 0; }
+.xp p, .xp li { font-size: 0.93rem; }
 </style>
 
 <div class="shell">
@@ -273,6 +278,7 @@ footer { color: var(--muted); font-size: 0.88rem; border-top: 1px solid var(--li
       <li><a href="#demos">Les 13 démos</a></li>
       <li class="grp">Synthèse</li>
       <li><a href="#patterns">Design patterns</a></li>
+      <li><a href="#experimental">APIs expérimentales</a></li>
     </ol>
   </nav>
 
@@ -739,6 +745,128 @@ footer { color: var(--muted); font-size: 0.88rem; border-top: 1px solid var(--li
         <button type="button" class="chip" data-f="comportement" aria-pressed="false">Comportement</button>
       </div>
       <div class="pattern-grid" id="pattern-grid"></div>
+    </section>
+
+    <!-- ============ APIS EXPÉRIMENTALES ============ -->
+    <section id="experimental">
+      <span class="eyebrow">12 · @OptIn</span>
+      <h2>Les APIs expérimentales</h2>
+      <div class="prose">
+        <p>Une API marquée <code>@RequiresOptIn</code> peut changer ou disparaître sans cycle de dépréciation. Le compilateur refuse de l'appeler sans un <code>@OptIn</code> explicite. Le projet utilise sept annotations de ce type, plus un drapeau Gradle de même nature. Aucune n'est activée globalement : chaque opt-in est posé au plus près de l'appel, pour qu'une montée de version montre tout de suite les fichiers à vérifier.</p>
+        <p>Chaque carte indique ce que l'API débloque dans l'app, le risque concret et les jalons à surveiller. Les statuts ont été relevés le 24 novembre 2026, à partir des notes de version et de la roadmap Kotlin.</p>
+      </div>
+
+      <div class="xp-grid">
+        <article class="xp">
+          <header><code>ExperimentalMaterial3Api</code><span class="badge b-common">commonMain</span></header>
+          <p class="where">material3 1.9.0 · core/AdaptiveBarScaffold.kt, core/DemoScreen.kt</p>
+          <h4>Ce que ça fait ici</h4>
+          <p>Débloque <code>TopAppBar</code>, la barre affichée quand <code>LocalBarPlacement</code> vaut <code>Top</code>. Le projet n'utilise ni <code>scrollBehavior</code> ni <code>TopAppBarDefaults</code>.</p>
+          <h4>Risques</h4>
+          <p><b>Faible.</b> Le composable est utilisé partout et sa signature de base bouge peu. Les comportements de défilement de <code>TopAppBarDefaults</code> sont la partie qui change : certaines surcharges sont déjà dépréciées au profit de versions qui prennent un <code>ScrollableState</code>.</p>
+          <h4>Jalons à suivre</h4>
+          <ul class="clean"><li>Material 3 côté Google : 1.4 stable, 1.5 en alpha. Chaque version stable sort des APIs de l'expérimental.</li><li>La version Compose Multiplatform de material3 qui reprendra ces changements.</li></ul>
+        </article>
+
+        <article class="xp">
+          <header><code>ExperimentalMaterial3AdaptiveApi</code><span class="badge b-common">commonMain</span></header>
+          <p class="where">material3-adaptive 1.3.0 · demos/panes/ListDetailDemo.kt, SupportingPaneDemo.kt, PanesCommon.kt</p>
+          <h4>Ce que ça fait ici</h4>
+          <p>Débloque <code>ListDetailPaneScaffold</code>, <code>SupportingPaneScaffold</code>, leurs navigateurs (<code>rememberListDetailPaneScaffoldNavigator</code>, <code>ThreePaneScaffoldNavigator</code>), <code>AnimatedPane</code> et <code>PaneAdaptedValue</code>. L'opt-in est posé sur tout le fichier (<code>@file:OptIn</code>).</p>
+          <h4>Risques</h4>
+          <p><b>Élevé.</b> C'est l'API qui change le plus entre deux versions mineures. Pendant le cycle 1.3.0, l'API d'ordre des panneaux est passée stable, puis est revenue en expérimental en bêta. <code>DragToResize</code> et <code>PaneMargin</code> sont aussi expérimentales. <code>rememberFoldAwarePaneDirective</code> dépend de la signature de <code>calculatePaneScaffoldDirective</code>.</p>
+          <h4>Jalons à suivre</h4>
+          <ul class="clean"><li>1.3.0 est stable depuis septembre 2026 : marges et edge-to-edge dans les deux scaffolds.</li><li>Le prochain cycle (1.4 alpha) : vérifier si les navigateurs et <code>AnimatedPane</code> sortent de l'expérimental.</li></ul>
+        </article>
+
+        <article class="xp">
+          <header><code>ExperimentalLayoutApi</code><span class="badge b-common">commonMain</span></header>
+          <p class="where">compose-foundation 1.12.2 · demos/platform/PlatformKit.kt, DisplayModesDemo.kt</p>
+          <h4>Ce que ça fait ici</h4>
+          <p>Débloque le paramètre <code>itemVerticalAlignment</code> de <code>FlowRow</code>, qui aligne le badge de niveau et le titre dans les cartes de capacité.</p>
+          <h4>Risques</h4>
+          <p><b>Faible.</b> Purement visuel et limité à deux fichiers. Si le paramètre change ou disparaît, il suffit de retirer l'alignement : la carte reste lisible.</p>
+          <h4>Jalons à suivre</h4>
+          <ul class="clean"><li>Les notes de version de compose-foundation, à chaque version mineure de Compose Multiplatform.</li></ul>
+        </article>
+
+        <article class="xp">
+          <header><code>ExperimentalWindowApi</code><span class="badge b-ea">androidMain</span></header>
+          <p class="where">androidx.window 1.5.1 · demos/platform/DisplayModes.android.kt</p>
+          <h4>Ce que ça fait ici</h4>
+          <p>Débloque <code>WindowAreaController</code> et <code>WindowAreaSessionPresenter</code> : le mode écran arrière et la présentation d'un contenu sur l'écran extérieur du Pixel Fold.</p>
+          <h4>Risques</h4>
+          <p><b>Élevé.</b> Google avait marqué ces APIs expérimentales en 1.2 pour les stabiliser en 1.3. Elles sont toujours expérimentales en 1.5.1, et le controller est devenu abstrait en 1.4. Le comportement dépend aussi des extensions WindowManager du constructeur. C'est pour ça que la démo lit <code>extensionVersion</code> et affiche « non pris en charge » au lieu de planter.</p>
+          <h4>Jalons à suivre</h4>
+          <ul class="clean"><li>androidx.window 1.6.0 (en alpha) : <code>presentContentOnWindowArea</code>, <code>getActivePresentationSession</code> et <code>addWindowAreasListener</code> arrivent, toujours sous <code>@ExperimentalWindowApi</code>.</li><li>Prévoir une migration du contrôleur quand 1.6 sera stable.</li></ul>
+        </article>
+
+        <article class="xp">
+          <header><code>ExperimentalComposeUiApi</code><span class="badge b-ps">iosMain</span></header>
+          <p class="where">compose-ui 1.12.2 · demos/platform/DragDrop.ios.kt</p>
+          <h4>Ce que ça fait ici</h4>
+          <p>Débloque le constructeur iOS de <code>DragAndDropTransferData</code>, qui prend une liste de <code>UIDragItem</code>, et la lecture de <code>DragAndDropEvent.items</code>.</p>
+          <h4>Risques</h4>
+          <p><b>Moyen.</b> Le glisser-déposer iOS existe depuis Compose Multiplatform 1.8. Il est toujours sous opt-in en 1.12.2, alors que le reste de Compose iOS est stable. Comme seule la charge utile est en <code>expect/actual</code>, un changement de signature ne touche que ce fichier d'environ 70 lignes.</p>
+          <h4>Jalons à suivre</h4>
+          <ul class="clean"><li>Les notes « What's new » de chaque version de Compose Multiplatform. La 1.13 a déjà stabilisé plusieurs APIs expérimentales.</li></ul>
+        </article>
+
+        <article class="xp">
+          <header><code>ExperimentalForeignApi</code><span class="badge b-ps">iosMain</span></header>
+          <p class="where">Kotlin/Native cinterop · fold/PlatformFoldState.ios.kt, core/BarPlacement.ios.kt, OuterDisplay.ios.kt, MultiWindow.ios.kt</p>
+          <h4>Ce que ça fait ici</h4>
+          <p>Débloque l'accès aux structures C (<code>CValue</code>, <code>useContents</code> sur <code>CGRect</code> et <code>NSOperatingSystemVersion</code>) et aux classes générées pour les ponts Objective-C <code>SHHingeObserverView</code> et <code>SHVerticalBarObserverView</code>.</p>
+          <h4>Risques</h4>
+          <p><b>Moyen, mais structurel.</b> L'import de bibliothèques Objective-C reste expérimental, et tout le code iOS du projet repose dessus. En pratique cette API bouge peu. Le vrai risque, c'est qu'une nouvelle API iOS (iOS 27.1 ici) ne soit pas dans les bindings : d'où les ponts écrits à la main.</p>
+          <h4>Jalons à suivre</h4>
+          <ul class="clean"><li>La stabilisation de l'import Objective-C (cinterop) : aucune date sur la roadmap Kotlin (mise à jour en août 2026, prochaine révision prévue en février 2027).</li><li>À ne pas confondre avec Swift export (en alpha), que le projet n'utilise pas. Swift export publie Kotlin vers Swift ; il ne remplace pas cinterop, qui fait l'inverse.</li></ul>
+        </article>
+
+        <article class="xp">
+          <header><code>BetaInteropApi</code><span class="badge b-ps">iosMain</span></header>
+          <p class="where">Kotlin/Native cinterop · demos/platform/DragDrop.ios.kt, OuterDisplay.ios.kt</p>
+          <h4>Ce que ça fait ici</h4>
+          <p>Débloque les constructeurs Foundation comme <code>NSString.create(string:)</code> et la recherche de classe à l'exécution avec <code>NSClassFromString</code>, qui détecte <code>UISceneAccessory</code> sans dépendre des bindings.</p>
+          <h4>Risques</h4>
+          <p><b>Faible.</b> Niveau bêta, donc plus mûr que <code>ExperimentalForeignApi</code>. Les appels sont peu nombreux et localisés.</p>
+          <h4>Jalons à suivre</h4>
+          <ul class="clean"><li>Les notes de version Kotlin/Native, comme pour <code>ExperimentalForeignApi</code>.</li></ul>
+        </article>
+
+        <article class="xp">
+          <header><code>-Xexpect-actual-classes</code><span class="badge b-ea">Gradle</span></header>
+          <p class="where">Kotlin 2.4.21 · shared/build.gradle.kts</p>
+          <h4>Ce que ça fait ici</h4>
+          <p>Ce n'est pas un <code>@OptIn</code>, mais c'est le même contrat. Le drapeau coupe l'avertissement « Beta » sur les classes <code>expect</code>/<code>actual</code>. Les fonctions <code>expect</code>/<code>actual</code>, elles, sont stables.</p>
+          <h4>Risques</h4>
+          <p><b>Faible.</b> JetBrains ne garantit pas encore la compatibilité des classes <code>expect</code>/<code>actual</code>, mais le mécanisme est largement utilisé. Une rupture se verrait à la compilation, dans le code natif seulement.</p>
+          <h4>Jalons à suivre</h4>
+          <ul class="clean"><li>Le passage en stable sur la roadmap Kotlin : le drapeau pourra alors être retiré.</li></ul>
+        </article>
+      </div>
+
+      <div class="cols two">
+        <div class="panel">
+          <h3>La règle : l'opt-in le plus étroit possible</h3>
+          <ul class="clean">
+            <li>Sur la <b>fonction ou la classe</b> qui fait l'appel, dans la grande majorité des cas.</li>
+            <li>Sur le <b>fichier</b> uniquement quand l'API expérimentale est le sujet même du fichier (les démos de panneaux).</li>
+            <li>Jamais dans <code>build.gradle.kts</code> : le seul drapeau compilateur est <code>-Xexpect-actual-classes</code>, qui active les classes <code>expect</code>/<code>actual</code>, elles-mêmes encore en bêta.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Ce qui n'en demande pas</h3>
+          <ul class="clean">
+            <li><b>Navigation 3</b> (<code>navigation3-ui</code> 1.1.2) et <b>navigationevent</b> 1.1.0 sont utilisées sans aucun opt-in, y compris dans la démo de scène à deux panneaux.</li>
+            <li>Les ponts natifs isolent l'expérimental côté plateforme : une fois traduit en <code>FoldState</code> ou <code>BarPlacement</code>, plus rien n'est expérimental dans le code commun qui les lit.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">
+        <b>À la montée de version.</b> Cherchez <code>@OptIn</code> dans <code>shared/src</code> : chaque occurrence est un point de rupture possible. Les plus exposées sont <code>ExperimentalWindowApi</code> (API d'écran arrière encore mouvante) et <code>ExperimentalMaterial3AdaptiveApi</code> (les scaffolds de panneaux changent souvent de signature entre versions mineures).
+      </div>
     </section>
 
     <footer>
