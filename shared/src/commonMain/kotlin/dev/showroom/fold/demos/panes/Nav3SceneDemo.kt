@@ -1,5 +1,10 @@
 package dev.showroom.fold.demos.panes
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +37,9 @@ import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SceneStrategy
 import androidx.navigation3.scene.SceneStrategyScope
 import androidx.navigation3.ui.NavDisplay
+import androidx.navigation3.ui.defaultPopTransitionSpec
+import androidx.navigation3.ui.defaultPredictivePopTransitionSpec
+import androidx.navigation3.ui.defaultTransitionSpec
 import dev.showroom.fold.core.Demo
 import dev.showroom.fold.core.Sharing
 import dev.showroom.fold.core.LocalBarPlacement
@@ -51,7 +59,8 @@ val nav3SceneDemo = Demo(
         "Pli : la scène à deux panneaux utilise FoldAwareTwoPane, donc chaque entrée se cale d'un côté du pli (moitié / moitié sans pli), jamais à cheval dessus.",
         "Perdu faute de plugin : rememberNavBackStack (restauration après mort du processus) exige des clés NavKey @Serializable et un SerializersModule polymorphique hors Android, donc le plugin kotlinx-serialization et sa dépendance, absents du projet.",
         "Retour : NavDisplay installe son propre handler (NavigationEvent) quand la pile a plus d'une entrée ; il passe avant celui de l'hôte et dépile, la démo ne quitte qu'à la racine. Une flèche « Dépiler » est ajoutée avec la barre du haut ; iPhone Duo en barre verticale : c'est le Retour en haut de cette barre qui dépile, la ligne ne garde que la pile.",
-        "Gotcha : la clé d'une scène doit changer quand ses entrées changent, sinon la transition entre scènes ne se déclenche pas ; l'état de défilement d'une entrée suit le contentKey de son entrée.",
+        "Gotcha : NavDisplay n'anime qu'un changement de clé de scène, et anime alors toute la scène (sur iOS : glissement « push » sous un voile gris). La clé ne suit donc que l'entrée de gauche : choisir un article dans la liste remplace le détail sur place, sans faire glisser la liste ni couper son ripple ; ouvrir un article lié décale la scène. Entre deux scènes à deux panneaux, la scène fournit son propre transitionSpec (metadata) : un changement instantané, car le push iOS (ou même un fondu) voilerait l'ancienne scène, trouée là où était l'entrée partagée que NavDisplay ne dessine que dans une scène.",
+        "Depuis la liste, un article remplace le détail au lieu de s'empiler : la liste reste à gauche. L'état de défilement d'une entrée suit le contentKey de son entrée.",
     ),
     content = { Nav3SceneContent() },
 )
@@ -64,8 +73,13 @@ private sealed interface Screen {
 
 private const val WIDE_BREAKPOINT_DP = 600
 
-/** The scene key changes whenever the displayed entries change, so scene transitions run. */
-private data class TwoPaneKey(val contentKeys: List<Any>)
+/**
+ * Keyed on the left (anchor) entry only. Changing just the right pane keeps the same scene, so
+ * NavDisplay runs no scene transition: the detail swaps in place, as in a split view. Otherwise
+ * the whole layout, list included, would play the platform push (on iOS a slide under a grey veil)
+ * and cut the tapped row's ripple short. A new left entry still changes the key.
+ */
+private data class TwoPaneKey(val anchorContentKey: Any)
 
 /**
  * Shows the last two entries side by side. With a single entry, the right pane holds a placeholder.
@@ -75,6 +89,19 @@ private class TwoPaneScene(
     override val entries: List<NavEntry<Screen>>,
     override val previousEntries: List<NavEntry<Screen>>,
 ) : Scene<Screen> {
+    // Between two two-pane scenes (opening a related article shifts the panes), an instant swap
+    // instead of the platform push. On iOS the push slides the whole layout under a grey veil, and
+    // NavDisplay draws an entry shared by both scenes (the article moving left) only in one of them,
+    // so the veiled outgoing scene shows a hole where that entry was.
+    override val metadata: Map<String, Any> =
+        NavDisplay.transitionSpec {
+            if (isPaneShift()) paneSwap() else asScreenScope().(defaultTransitionSpec<Screen>())()
+        } + NavDisplay.popTransitionSpec {
+            if (isPaneShift()) paneSwap() else asScreenScope().(defaultPopTransitionSpec<Screen>())()
+        } + NavDisplay.predictivePopTransitionSpec { edge ->
+            if (isPaneShift()) paneSwap() else asScreenScope().(defaultPredictivePopTransitionSpec<Screen>())(edge)
+        }
+
     override val content: @Composable () -> Unit = {
         // Fold-aware: each pane on one side of a separating fold, else an even 50 / 50 split.
         // The strategy already decided on two panes, so never fall back to one here.
@@ -109,12 +136,25 @@ private class TwoPaneScene(
     }
 }
 
+private fun AnimatedContentTransitionScope<Scene<*>>.isPaneShift(): Boolean =
+    initialState is TwoPaneScene && targetState is TwoPaneScene
+
+/**
+ * An instant swap, like a split view. Any animated exit would still show the outgoing scene with a
+ * hole: NavDisplay draws the entry shared by both scenes only in the incoming one.
+ */
+private fun paneSwap(): ContentTransform = EnterTransition.None togetherWith ExitTransition.None
+
+@Suppress("UNCHECKED_CAST")
+private fun AnimatedContentTransitionScope<Scene<*>>.asScreenScope() =
+    this as AnimatedContentTransitionScope<Scene<Screen>>
+
 private class TwoPaneSceneStrategy(private val wide: Boolean) : SceneStrategy<Screen> {
     override fun SceneStrategyScope<Screen>.calculateScene(entries: List<NavEntry<Screen>>): Scene<Screen>? {
         if (!wide) return null // falls back to the single-pane scene
         val shown = entries.takeLast(2)
         return TwoPaneScene(
-            key = TwoPaneKey(shown.map { it.contentKey }),
+            key = TwoPaneKey(shown.first().contentKey),
             entries = shown,
             // What back leads to: one pop, not the whole scene. NavDisplay only handles back while
             // this is non-empty, so dropping both shown entries would let back leave the demo.
@@ -134,6 +174,15 @@ private fun Nav3SceneContent() {
 
     fun push(screen: Screen) {
         if (backStack.lastOrNull() != screen) backStack.add(screen)
+    }
+
+    // From the list: replace the detail instead of stacking it, so the list stays on the left.
+    fun select(articleId: Int) {
+        val target = listOf(Screen.Home, Screen.Detail(articleId))
+        if (backStack != target) {
+            backStack.clear()
+            backStack.addAll(target)
+        }
     }
 
     fun pop() {
@@ -183,7 +232,7 @@ private fun Nav3SceneContent() {
                 entry<Screen.Home> {
                     ArticleList(
                         selectedId = (backStack.last() as? Screen.Detail)?.articleId,
-                        onSelect = { push(Screen.Detail(it)) },
+                        onSelect = ::select,
                     )
                 }
                 entry<Screen.Detail> { key ->
