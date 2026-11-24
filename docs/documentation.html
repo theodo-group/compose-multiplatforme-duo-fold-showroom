@@ -670,7 +670,7 @@ footer { color: var(--muted); font-size: 0.88rem; border-top: 1px solid var(--li
             <li><b>Mode livre</b> : une page de chaque côté d'un pli vertical. Une double page commence toujours sur une page paire.</li>
             <li><b>Mode chevalet</b> : la vidéo au-dessus d'un pli horizontal, les commandes en dessous.</li>
             <li><b>Jauge de charnière</b> : affiche le mode et la raison en direct.</li>
-            <li><b>Navigation 3</b> : la scène à deux panneaux rend ses entrées avec ce composant.</li>
+            <li><b>Navigation 3</b> : la scène à deux panneaux reprend la même décision avec <code>FoldAwareArrangement</code> et place elle-même ses entrées avec <code>paneRects()</code>. Elle peut ainsi les faire glisser d'un panneau, comme un carrousel, quand on ouvre un article lié ou qu'on revient. Toutes ses scènes ont la même clé : une transition de <code>NavDisplay</code> entre deux scènes qui partagent une entrée laisserait un trou ou une superposition.</li>
           </ul>
         </div>
         <div class="panel">
@@ -977,7 +977,19 @@ fun FoldAwareTwoPane(
     state: FoldAwareTwoPaneState? = null,   // le mode choisi, lisible par l'appelant
     wideBreakpoint: Dp = 600.dp,
     singlePane: @Composable (TwoPaneArrangement) -> Unit = first,
-)` },
+)
+
+// Même décision, pour un contenu qui place ses panneaux lui-même (carrousel Navigation 3)
+@Composable
+fun FoldAwareArrangement(
+    modifier: Modifier = Modifier,
+    state: FoldAwareTwoPaneState? = null,
+    wideBreakpoint: Dp = 600.dp,
+    content: @Composable (TwoPaneArrangement) -> Unit,
+)
+
+// Rectangles des deux panneaux, de part et d'autre du pli (sinon coupés au milieu)
+fun TwoPaneArrangement.paneRects(width: Int, height: Int, layoutDirection: LayoutDirection): Pair<IntRect, IntRect>` },
     avoidingFold: { f: "demos/panes/PanesCommon.kt", c: String.raw`internal fun PaneScaffoldDirective.avoidingFold(fold: FoldState): PaneScaffoldDirective {
     val hinge = fold.separatingVerticalHinge() ?: return this
     return copy(
@@ -1147,7 +1159,7 @@ fun OuterDisplayViewController(): UIViewController = ComposeUIViewController {
     { id: "adaptive-grid", t: "Grille adaptative", s: "common", api: "LazyVerticalGrid, BoxWithConstraints (colonnes paires)", n: "aucun" },
     { id: "list-detail", t: "Liste / détail", s: "common", api: "ListDetailPaneScaffold, rememberFoldAwarePaneDirective()", n: "aucun" },
     { id: "supporting-pane", t: "Panneau secondaire", s: "common", api: "SupportingPaneScaffold", n: "aucun" },
-    { id: "nav3-scenes", t: "Navigation 3 : scènes", s: "common", api: "NavDisplay, SceneStrategy maison, FoldAwareTwoPane", n: "aucun" },
+    { id: "nav3-scenes", t: "Navigation 3 : scènes", s: "common", api: "NavDisplay, SceneStrategy maison, FoldAwareArrangement + paneRects (carrousel)", n: "aucun" },
     { id: "continuity", t: "Continuité d'état", s: "common", api: "remember vs rememberSaveable, snapshotFlow", n: "bouton Activity.recreate() (Android)" },
     { id: "hinge-gauge", t: "Jauge de charnière", s: "ea", api: "LocalFoldState re-fourni, HingeTweaks, Canvas", n: "source du FoldState" },
     { id: "book-mode", t: "Mode livre", s: "ea", api: "FoldAwareTwoPane (FoldStartEnd), HostBarItems", n: "source du FoldState" },
@@ -1260,7 +1272,7 @@ fun OuterDisplayViewController(): UIViewController = ComposeUIViewController {
   var PATTERNS = [
     { c: "compose", t: "Provider de CompositionLocal", d: "Une valeur transverse est calculée une fois en haut de l'arbre et lue n'importe où, sans la passer de paramètre en paramètre.", w: "ProvideFoldState, ProvideBarPlacement, LocalBarItems" },
     { c: "compose", t: "Surcharge locale d'un CompositionLocal", d: "Un sous-arbre re-fournit une version modifiée de la valeur. Le reste de l'app n'est pas affecté.", w: "HingeGaugeDemo + withTweaks()" },
-    { c: "compose", t: "Slot API", d: "Les composants reçoivent des lambdas composables au lieu de connaître leur contenu.", w: "AdaptiveBarScaffold, Demo.content, FoldAwareTwoPane(first, second), PlatformDemoPage" },
+    { c: "compose", t: "Slot API", d: "Les composants reçoivent des lambdas composables au lieu de connaître leur contenu.", w: "AdaptiveBarScaffold, Demo.content, FoldAwareTwoPane(first, second), FoldAwareArrangement(content), PlatformDemoPage" },
     { c: "compose", t: "State hoisting", d: "L'état est remonté au parent qui en a besoin ; les écrans sont sans état et remontent des événements.", w: "currentId et catalogGridState dans App(), CatalogScreen(onOpen), DemoScreen(onBack), FoldAwareTwoPaneState" },
     { c: "compose", t: "Navigation par état", d: "Deux niveaux d'écran pilotés par une seule valeur saveable, sans back stack ni bibliothèque de navigation.", w: "App.kt, if (demo == null)" },
     { c: "compose", t: "Hôte / template", d: "Un écran générique fournit le même chrome à tous les contenus qu'il héberge.", w: "DemoScreen" },
